@@ -1,0 +1,116 @@
+import type { Request, Response } from 'express';
+
+import type { AuthRole, OtpModel } from '../models/otp.model.js';
+
+type OtpRequestBody = { email?: unknown; role?: unknown };
+type OtpVerificationBody = OtpRequestBody & { code?: unknown };
+
+const validRoles = new Set<AuthRole>(['DOCTOR', 'PATIENT']);
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function readEmail(value: unknown) {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const email = value.trim().toLowerCase();
+  return emailPattern.test(email) ? email : undefined;
+}
+
+function readRole(value: unknown): AuthRole | undefined {
+  return typeof value === 'string' && validRoles.has(value as AuthRole) ? (value as AuthRole) : undefined;
+}
+
+function sendValidationError(response: Response, message: string) {
+  response.status(400).json({ error: { code: 'VALIDATION_ERROR', message } });
+}
+
+export function createAuthController(otpModel: OtpModel, otpDeliveryMode: 'development' | 'smtp') {
+  return {
+    requestEmailOtp: (request: Request<unknown, unknown, OtpRequestBody>, response: Response) => {
+      const email = readEmail(request.body.email);
+      const role = readRole(request.body.role);
+
+      if (!email) {
+        sendValidationError(response, 'Provide a valid email address.');
+        return;
+      }
+
+      if (!role) {
+        sendValidationError(response, 'Role must be PATIENT or DOCTOR.');
+        return;
+      }
+
+      if (otpDeliveryMode === 'smtp') {
+        response.status(503).json({
+          error: {
+            code: 'EMAIL_TRANSPORT_UNAVAILABLE',
+            message: 'SMTP delivery has not been connected yet. Use development OTP mode locally.',
+          },
+        });
+        return;
+      }
+
+      const result = otpModel.create(email, role);
+
+      if (!result.ok) {
+        response.status(429).json({
+          error: {
+            code: 'OTP_RATE_LIMITED',
+            message: `Try again in ${result.retryAfterSeconds} seconds.`,
+          },
+        });
+        return;
+      }
+
+      response.status(202).json({
+        data: {
+          delivery: 'development',
+          developmentCode: result.code,
+          email,
+          expiresInSeconds: result.expiresInSeconds,
+          message: 'Development OTP generated. No email was sent because SMTP is not configured.',
+          role,
+        },
+      });
+    },
+
+    verifyEmailOtp: (request: Request<unknown, unknown, OtpVerificationBody>, response: Response) => {
+      const email = readEmail(request.body.email);
+      const role = readRole(request.body.role);
+      const code = typeof request.body.code === 'string' ? request.body.code.trim() : '';
+
+      if (!email || !role || !/^\d{6}$/.test(code)) {
+        sendValidationError(response, 'Provide a valid email, role, and six-digit OTP code.');
+        return;
+      }
+
+      const result = otpModel.verify(email, role, code);
+
+      if (!result.ok) {
+        const messages = {
+          attempts_exceeded: 'Too many verification attempts. Request a new OTP.',
+          expired: 'OTP expired or was not requested. Request a new OTP.',
+          invalid_code: 'The OTP code is incorrect.',
+        } as const;
+
+        response.status(result.reason === 'invalid_code' ? 401 : 410).json({
+          error: {
+            code: result.reason.toUpperCase(),
+            message: messages[result.reason],
+            ...(result.reason === 'invalid_code' ? { attemptsRemaining: result.attemptsRemaining } : {}),
+          },
+        });
+        return;
+      }
+
+      response.status(200).json({
+        data: {
+          // Development only. A signed access token will replace this after real auth is added.
+          developmentSessionToken: `dev-session-${result.sessionId}`,
+          user: { email, role },
+        },
+      });
+    },
+  };
+}

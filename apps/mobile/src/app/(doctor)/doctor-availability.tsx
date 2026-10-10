@@ -1,0 +1,20 @@
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { AppCard } from '@/components/app-card';
+import { ScreenHeader } from '@/components/screen-header';
+import { colors } from '@/theme/colors';
+import { radius } from '@/theme/radius';
+import { spacing } from '@/theme/spacing';
+import { typography } from '@/theme/typography';
+
+function Setting({ detail, enabled, label, onChange }: { detail: string; enabled: boolean; label: string; onChange: (value: boolean) => void }) { return <View style={styles.setting}><View style={styles.copy}><Text style={styles.label}>{label}</Text><Text style={styles.detail}>{detail}</Text></View><Switch accessibilityLabel={label} onValueChange={onChange} thumbColor={colors.surface} trackColor={{ false: colors.border, true: colors.doctor.primary }} value={enabled} /></View>; }
+
+export default function DoctorAvailabilityScreen() {
+  const [available, setAvailable] = useState(true); const [newRequests, setNewRequests] = useState(true); const [messages, setMessages] = useState(true); const [system, setSystem] = useState(false);
+  return <View style={styles.container}><SafeAreaView edges={['top']} style={styles.safeArea}><ScreenHeader title="Availability & Notifications" /><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}><Text style={typography.screenTitle}>Availability</Text><AppCard><View style={styles.availability}><View style={styles.availabilityIcon}><MaterialCommunityIcons color={colors.doctor.primary} name="calendar-check-outline" size={22} /></View><View style={styles.copy}><Text style={styles.label}>Available for new requests</Text><Text style={styles.detail}>{available ? 'You can receive sample consultation requests.' : 'New requests are paused.'}</Text></View><Switch accessibilityLabel="Available for new requests" onValueChange={setAvailable} thumbColor={colors.surface} trackColor={{ false: colors.border, true: colors.doctor.primary }} value={available} /></View></AppCard><Text style={typography.sectionTitle}>Notification Preferences</Text><AppCard><Setting detail="Receive new consultation requests." enabled={newRequests} label="New Requests" onChange={setNewRequests} /><View style={styles.divider} /><Setting detail="Receive patient chat alerts." enabled={messages} label="Messages" onChange={setMessages} /><View style={styles.divider} /><Setting detail="Receive account and product updates." enabled={system} label="System Notifications" onChange={setSystem} /></AppCard><View style={styles.note}><MaterialCommunityIcons color={colors.warning} name="information-outline" size={20} /><Text style={styles.noteText}>These controls affect only the current UI session until backend settings are connected.</Text></View></ScrollView></SafeAreaView></View>;
+}
+
+const styles = StyleSheet.create({ availability: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, padding: spacing.md }, availabilityIcon: { alignItems: 'center', backgroundColor: colors.doctor.soft, borderRadius: radius.sm, height: 42, justifyContent: 'center', width: 42 }, container: { backgroundColor: colors.canvas, flex: 1 }, content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xxl }, copy: { flex: 1 }, detail: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 3 }, divider: { backgroundColor: colors.border, height: 1, marginLeft: spacing.md }, label: { color: colors.navy, fontSize: 14, fontWeight: '700' }, note: { alignItems: 'flex-start', backgroundColor: colors.warningSoft, borderRadius: radius.md, flexDirection: 'row', gap: spacing.xs, padding: spacing.md }, noteText: { color: colors.text, flex: 1, fontSize: 12, lineHeight: 18 }, safeArea: { flex: 1 }, setting: { alignItems: 'center', flexDirection: 'row', gap: spacing.md, minHeight: 76, paddingHorizontal: spacing.md }, });
