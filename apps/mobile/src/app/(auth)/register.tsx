@@ -5,21 +5,45 @@ import { router } from 'expo-router';
 import { AppButton } from '@/components/app-button';
 import { AuthLayout } from '@/components/auth-layout';
 import { FormField } from '@/components/form-field';
+import { authApi, getApiErrorMessage } from '@/lib/api';
 import { colors } from '@/theme/colors';
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordHidden, setPasswordHidden] = useState(true);
+  const [isSending, setIsSending] = useState(false);
 
-  function createAccount() {
-    if (!fullName.trim() || !email.trim() || !password) {
-      Alert.alert('Missing details', 'Complete all fields to create your account.');
+  async function createAccount() {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedName = fullName.trim();
+
+    if (!normalizedName || !isValidEmail(normalizedEmail)) {
+      Alert.alert('Missing details', 'Enter your full name and a valid email address.');
       return;
     }
 
-    router.push({ pathname: '/verify-otp', params: { email: email.trim() } });
+    try {
+      setIsSending(true);
+      const response = await authApi.requestEmailOtp(normalizedEmail, 'PATIENT');
+
+      router.push({
+        pathname: '/verify-otp',
+        params: {
+          email: response.email,
+          fullName: normalizedName,
+          role: response.role,
+          developmentCode: response.developmentCode ?? '',
+        },
+      });
+    } catch (error) {
+      Alert.alert('OTP could not be sent', getApiErrorMessage(error));
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (
@@ -32,7 +56,7 @@ export default function RegisterScreen() {
           </Pressable>
         </View>
       }
-      subtitle="Create your account to get started."
+      subtitle="Create your account with your name and email."
       title="Register"
     >
       <FormField
@@ -45,24 +69,17 @@ export default function RegisterScreen() {
       />
       <FormField
         accessibilityLabel="Email address"
+        autoCapitalize="none"
+        autoCorrect={false}
         icon="email-outline"
         keyboardType="email-address"
         onChangeText={setEmail}
+        onSubmitEditing={() => void createAccount()}
         placeholder="Email Address"
+        returnKeyType="go"
         value={email}
       />
-      <FormField
-        accessibilityLabel="Password"
-        icon="lock-outline"
-        onChangeText={setPassword}
-        onSubmitEditing={createAccount}
-        placeholder="Password"
-        returnKeyType="go"
-        secureTextEntry={passwordHidden}
-        toggleSecureEntry={() => setPasswordHidden((current) => !current)}
-        value={password}
-      />
-      <AppButton label="Register" onPress={createAccount} />
+      <AppButton label="Send OTP to Email" loading={isSending} onPress={() => void createAccount()} />
     </AuthLayout>
   );
 }

@@ -35,6 +35,7 @@ export default function ConsultationPhotosScreen() {
       const newPhotos: ConsultationPhoto[] = result.assets.slice(0, remainingSlots).map((asset, index) => ({
         fileName: asset.fileName ?? `Medical photo ${draft.photos.length + index + 1}`,
         id: `${asset.uri}-${Date.now()}-${index}`,
+        mimeType: asset.mimeType,
         uri: asset.uri,
       }));
       setPhotos([...draft.photos, ...newPhotos]);
@@ -85,7 +86,7 @@ export default function ConsultationPhotosScreen() {
 
           <View style={styles.privacyNote}>
             <MaterialCommunityIcons color={colors.patient.primary} name="shield-lock-outline" size={21} />
-            <Text style={styles.privacyText}>Selected photos stay only in this app preview. They are not uploaded in this UI phase.</Text>
+            <Text style={styles.privacyText}>Photos are uploaded securely only after you submit this consultation request.</Text>
           </View>
 
           <View style={styles.actions}>

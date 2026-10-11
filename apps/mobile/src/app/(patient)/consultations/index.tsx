@@ -1,13 +1,13 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { AppCard } from '@/components/app-card';
 import { BottomNav } from '@/components/bottom-nav';
 import { StatusBadge } from '@/components/status-badge';
-import { useConsultationDraft, type ConsultationStatus } from '@/context/consultation-draft';
+import { formatConsultationDate, useConsultationDraft, type ConsultationStatus } from '@/context/consultation-draft';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
@@ -15,10 +15,10 @@ import { typography } from '@/theme/typography';
 
 type Filter = 'All' | ConsultationStatus;
 
-const filters: Filter[] = ['All', 'Pending', 'In Progress', 'Completed'];
+const filters: Filter[] = ['All', 'Pending', 'In Progress', 'Completed', 'Cancelled'];
 
 export default function ConsultationsScreen() {
-  const { consultations } = useConsultationDraft();
+  const { consultations, isLoading, loadError, refreshConsultations } = useConsultationDraft();
   const [filter, setFilter] = useState<Filter>('All');
   const filteredConsultations = useMemo(
     () => consultations.filter((consultation) => filter === 'All' || consultation.status === filter),
@@ -36,7 +36,11 @@ export default function ConsultationsScreen() {
           <View style={styles.backButton} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl onRefresh={() => void refreshConsultations()} refreshing={isLoading} />}
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={typography.screenTitle}>My Consultations</Text>
           <Text style={styles.subtitle}>Track your consultation requests and doctor updates.</Text>
 
@@ -68,7 +72,7 @@ export default function ConsultationsScreen() {
                   <View style={[styles.caseIcon, consultation.status === 'Completed' && styles.caseIconCompleted]}>
                     <MaterialCommunityIcons
                       color={consultation.status === 'Completed' ? colors.success : colors.patient.primary}
-                      name={consultation.photos.length > 0 ? 'image-multiple-outline' : 'clipboard-text-outline'}
+                      name={consultation.attachments.length > 0 ? 'image-multiple-outline' : 'clipboard-text-outline'}
                       size={25}
                     />
                   </View>
@@ -77,7 +81,7 @@ export default function ConsultationsScreen() {
                     <Text style={styles.caseDoctor}>
                       {consultation.doctorName ?? 'Waiting for a doctor'}
                     </Text>
-                    <Text style={styles.caseTime}>{consultation.submittedAt}</Text>
+                    <Text style={styles.caseTime}>{formatConsultationDate(consultation.submittedAt)}</Text>
                   </View>
                   <View style={styles.caseMeta}>
                     <StatusBadge status={consultation.status} />
@@ -96,10 +100,17 @@ export default function ConsultationsScreen() {
             </View>
           ) : null}
 
-          <View style={styles.demoNote}>
-            <MaterialCommunityIcons color={colors.warning} name="information-outline" size={20} />
-            <Text style={styles.demoNoteText}>New requests are kept locally in this demo until the backend is connected.</Text>
-          </View>
+          {loadError ? (
+            <View style={styles.errorNote}>
+              <MaterialCommunityIcons color="#D93B3B" name="alert-circle-outline" size={20} />
+              <View style={styles.errorCopy}>
+                <Text style={styles.errorText}>{loadError}</Text>
+                <Pressable accessibilityRole="button" onPress={() => void refreshConsultations()}>
+                  <Text style={styles.retryText}>Try again</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
         </ScrollView>
       </SafeAreaView>
       <BottomNav activeLabel="Consultations" role="patient" />
@@ -162,20 +173,29 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  demoNote: {
+  errorCopy: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  errorNote: {
     alignItems: 'flex-start',
-    backgroundColor: colors.warningSoft,
+    backgroundColor: '#FFF0F0',
     borderRadius: radius.md,
     flexDirection: 'row',
     gap: spacing.xs,
     marginTop: spacing.md,
     padding: spacing.md,
   },
-  demoNoteText: {
+  errorText: {
     color: colors.text,
     flex: 1,
     fontSize: 12,
     lineHeight: 18,
+  },
+  retryText: {
+    color: colors.patient.primary,
+    fontSize: 12,
+    fontWeight: '700',
   },
   emptyState: {
     alignItems: 'center',

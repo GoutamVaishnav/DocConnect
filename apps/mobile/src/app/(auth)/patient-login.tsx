@@ -5,73 +5,71 @@ import { router } from 'expo-router';
 import { AppButton } from '@/components/app-button';
 import { AuthLayout } from '@/components/auth-layout';
 import { FormField } from '@/components/form-field';
+import { authApi, getApiErrorMessage } from '@/lib/api';
 import { colors } from '@/theme/colors';
-import { spacing } from '@/theme/spacing';
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 export default function PatientLoginScreen() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordHidden, setPasswordHidden] = useState(true);
+  const [isSending, setIsSending] = useState(false);
 
-  function signIn() {
-    if (!email.trim() || !password) {
-      Alert.alert('Missing details', 'Enter your email address and password to continue.');
+  async function requestOtp() {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!isValidEmail(normalizedEmail)) {
+      Alert.alert('Enter a valid email', 'Use the email address where you want to receive the OTP.');
       return;
     }
 
-    router.replace('/home');
+    try {
+      setIsSending(true);
+      const response = await authApi.requestEmailOtp(normalizedEmail, 'PATIENT');
+
+      router.push({
+        pathname: '/verify-otp',
+        params: {
+          email: response.email,
+          role: response.role,
+          developmentCode: response.developmentCode ?? '',
+        },
+      });
+    } catch (error) {
+      Alert.alert('OTP could not be sent', getApiErrorMessage(error));
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (
     <AuthLayout
       footer={
         <View style={styles.accountPrompt}>
-          <Text style={styles.accountText}>Don&apos;t have an account?</Text>
+          <Text style={styles.accountText}>New to DocConnect?</Text>
           <Pressable accessibilityRole="link" onPress={() => router.push('/register')}>
             <Text style={styles.accountLink}> Register</Text>
           </Pressable>
         </View>
       }
-      subtitle="Welcome back! Please log in to your account."
-      title="Login"
+      subtitle="Enter your email and we will send a secure one-time code."
+      title="Patient Login"
     >
       <FormField
         accessibilityLabel="Email address"
-        icon="account-outline"
+        autoCapitalize="none"
+        autoCorrect={false}
+        icon="email-outline"
         keyboardType="email-address"
         onChangeText={setEmail}
+        onSubmitEditing={() => void requestOtp()}
         placeholder="Email Address"
+        returnKeyType="go"
         value={email}
       />
-      <FormField
-        accessibilityLabel="Password"
-        icon="lock-outline"
-        onChangeText={setPassword}
-        onSubmitEditing={signIn}
-        placeholder="Password"
-        returnKeyType="go"
-        secureTextEntry={passwordHidden}
-        toggleSecureEntry={() => setPasswordHidden((current) => !current)}
-        value={password}
-      />
-      <Pressable accessibilityRole="link" onPress={() => Alert.alert('Forgot password', 'Password reset will be connected when authentication APIs are added.')}>
-        <Text style={styles.forgotPassword}>Forgot Password?</Text>
-      </Pressable>
-
-      <AppButton label="Login" onPress={signIn} />
-
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.orText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <AppButton
-        icon="google"
-        label="Continue with Google"
-        onPress={() => Alert.alert('Google sign-in', 'Google sign-in will be added with the real authentication flow.')}
-        variant="outline"
-      />
+      <AppButton label="Send OTP to Email" loading={isSending} onPress={() => void requestOtp()} />
+      <Text style={styles.note}>We never ask for a password. The OTP is valid for 10 minutes.</Text>
     </AuthLayout>
   );
 }
@@ -89,25 +87,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 13,
   },
-  divider: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  dividerLine: {
-    backgroundColor: colors.border,
-    flex: 1,
-    height: 1,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    color: colors.patient.primary,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: -spacing.xs,
-  },
-  orText: {
+  note: {
     color: colors.muted,
     fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });

@@ -9,6 +9,7 @@ import { createAuthRouter } from './routes/auth.routes.js';
 import { createConsultationRouter } from './routes/consultation.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
 import { createProfileRouter } from './routes/profile.routes.js';
+import type { OtpEmailSender } from './services/otp-email.service.js';
 
 function getAllowedOrigins() {
   const configuredOrigins = env.corsOrigin;
@@ -20,7 +21,11 @@ function getAllowedOrigins() {
   return configuredOrigins.split(',').map((origin) => origin.trim());
 }
 
-export function createApp() {
+type CreateAppOptions = {
+  otpEmailSender?: OtpEmailSender;
+};
+
+export function createApp({ otpEmailSender }: CreateAppOptions = {}) {
   const app = express();
 
   app.disable('x-powered-by');
@@ -45,6 +50,7 @@ export function createApp() {
       Boolean(env.databaseUrl),
       env.jwtAccessSecret || '',
       env.jwtAccessExpiresIn,
+      otpEmailSender,
     ),
   );
   app.use('/api/v1/consultations', createConsultationRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn));

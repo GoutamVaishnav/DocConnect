@@ -16,18 +16,35 @@ import { typography } from '@/theme/typography';
 export default function ReviewConsultationScreen() {
   const { draft, submitDraft } = useConsultationDraft();
   const [hasConsent, setHasConsent] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function submitRequest() {
+  async function submitRequest() {
     if (!hasConsent) {
       Alert.alert('Consent required', 'Please confirm consent before submitting your consultation request.');
       return;
     }
 
-    const consultation = submitDraft();
-    router.replace({
-      pathname: '/consultation-submitted',
-      params: { consultationId: consultation.id },
-    });
+    try {
+      setIsSubmitting(true);
+      const result = await submitDraft();
+
+      if (result.failedPhotoCount > 0) {
+        Alert.alert(
+          'Request submitted',
+          `${result.failedPhotoCount} photo${result.failedPhotoCount === 1 ? '' : 's'} could not be uploaded. You can see the request in My Consultations.`,
+        );
+      }
+
+      router.replace({
+        pathname: '/consultation-submitted',
+        params: { consultationId: result.consultation.id },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Please try again.';
+      Alert.alert('Request could not be submitted', message);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -84,12 +101,12 @@ export default function ReviewConsultationScreen() {
             <Text style={styles.consentText}>I agree to share this medical information with the doctor for consultation purposes.</Text>
           </Pressable>
 
-          <View style={styles.demoNote}>
-            <MaterialCommunityIcons color={colors.warning} name="information-outline" size={20} />
-            <Text style={styles.demoText}>Demo mode: this confirms the interface only. No medical data is sent to a server yet.</Text>
+          <View style={styles.secureNote}>
+            <MaterialCommunityIcons color={colors.patient.primary} name="shield-check-outline" size={20} />
+            <Text style={styles.secureText}>Your request and selected photos will be sent securely to DocConnect for doctor review.</Text>
           </View>
 
-          <AppButton label="Submit Request" onPress={submitRequest} />
+          <AppButton label="Submit Request" loading={isSubmitting} onPress={() => void submitRequest()} />
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -140,16 +157,16 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  demoNote: {
+  secureNote: {
     alignItems: 'flex-start',
-    backgroundColor: colors.warningSoft,
+    backgroundColor: colors.patient.soft,
     borderRadius: radius.md,
     flexDirection: 'row',
     gap: spacing.xs,
     marginBottom: spacing.sm,
     padding: spacing.md,
   },
-  demoText: {
+  secureText: {
     color: colors.text,
     flex: 1,
     fontSize: 12,

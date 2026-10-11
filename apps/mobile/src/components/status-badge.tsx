@@ -5,13 +5,14 @@ import { radius } from '@/theme/radius';
 import type { ConsultationStatus } from '@/context/consultation-draft';
 
 type StatusBadgeProps = {
-  status: ConsultationStatus;
+  status: ConsultationStatus | 'New';
 };
 
 const palette = {
   'In Progress': { background: colors.patient.soft, text: colors.patient.primary },
   Pending: { background: colors.warningSoft, text: colors.warning },
   Completed: { background: colors.successSoft, text: colors.success },
+  Cancelled: { background: '#FFF0F0', text: '#D93B3B' },
   New: { background: colors.doctor.soft, text: colors.doctor.primary },
 } as const;
 

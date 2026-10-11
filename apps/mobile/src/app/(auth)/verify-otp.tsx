@@ -4,25 +4,57 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { AppButton } from '@/components/app-button';
 import { AuthLayout } from '@/components/auth-layout';
+import { useAuth } from '@/context/auth';
+import { type AppUserRole, authApi, getApiErrorMessage, profileApi } from '@/lib/api';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
 
 const otpLength = 6;
 
+function firstValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function readRole(value: string | undefined): AppUserRole | null {
+  return value === 'PATIENT' || value === 'DOCTOR' ? value : null;
+}
+
 export default function VerifyOtpScreen() {
   const inputs = useRef<(TextInput | null)[]>([]);
+  const { signIn } = useAuth();
   const [digits, setDigits] = useState(Array(otpLength).fill(''));
-  const { email } = useLocalSearchParams<{ email?: string }>();
-  const deliveryAddress = typeof email === 'string' && email ? email : 'your email address';
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const parameters = useLocalSearchParams<{
+    developmentCode?: string | string[];
+    email?: string | string[];
+    fullName?: string | string[];
+    role?: string | string[];
+  }>();
+  const email = firstValue(parameters.email)?.trim().toLowerCase() ?? '';
+  const fullName = firstValue(parameters.fullName)?.trim() ?? '';
+  const role = readRole(firstValue(parameters.role));
+  const [developmentCode, setDevelopmentCode] = useState(firstValue(parameters.developmentCode) ?? '');
+  const deliveryAddress = email || 'your email address';
 
   function updateDigit(value: string, index: number) {
-    const digit = value.replace(/\D/g, '').slice(-1);
+    const enteredDigits = value.replace(/\D/g, '');
     const nextDigits = [...digits];
-    nextDigits[index] = digit;
+
+    if (enteredDigits.length > 1) {
+      enteredDigits.slice(0, otpLength - index).split('').forEach((digit, offset) => {
+        nextDigits[index + offset] = digit;
+      });
+      setDigits(nextDigits);
+      inputs.current[Math.min(index + enteredDigits.length, otpLength - 1)]?.focus();
+      return;
+    }
+
+    nextDigits[index] = enteredDigits;
     setDigits(nextDigits);
 
-    if (digit && index < otpLength - 1) {
+    if (enteredDigits && index < otpLength - 1) {
       inputs.current[index + 1]?.focus();
     }
   }
@@ -33,23 +65,63 @@ export default function VerifyOtpScreen() {
     }
   }
 
-  function verifyCode() {
-    if (digits.join('').length !== otpLength) {
+  async function verifyCode() {
+    const code = digits.join('');
+
+    if (!email || !role) {
+      Alert.alert('Login details missing', 'Go back and request a new OTP before verifying.');
+      return;
+    }
+
+    if (code.length !== otpLength) {
       Alert.alert('Enter the code', 'Please enter all 6 digits from the verification code.');
       return;
     }
 
-    router.replace('/home');
+    try {
+      setIsVerifying(true);
+      const response = await authApi.verifyEmailOtp(email, role, code);
+
+      if (response.user.role === 'PATIENT' && fullName) {
+        await profileApi.savePatientProfile(response.accessToken, fullName);
+      }
+
+      await signIn({ accessToken: response.accessToken, user: response.user });
+      router.replace(response.user.role === 'DOCTOR' ? '/dashboard' : '/home');
+    } catch (error) {
+      Alert.alert('Verification failed', getApiErrorMessage(error));
+    } finally {
+      setIsVerifying(false);
+    }
+  }
+
+  async function resendOtp() {
+    if (!email || !role) {
+      Alert.alert('Login details missing', 'Go back and request a new OTP.');
+      return;
+    }
+
+    try {
+      setIsResending(true);
+      const response = await authApi.requestEmailOtp(email, role);
+      setDigits(Array(otpLength).fill(''));
+      setDevelopmentCode(response.developmentCode ?? '');
+      inputs.current[0]?.focus();
+      Alert.alert('OTP sent', `A new OTP was sent to ${response.email}.`);
+    } catch (error) {
+      Alert.alert('OTP could not be resent', getApiErrorMessage(error));
+    } finally {
+      setIsResending(false);
+    }
   }
 
   return (
     <AuthLayout
       footer={
-        <Pressable
-          accessibilityRole="link"
-          onPress={() => Alert.alert('Code resend', `A new OTP will be sent to ${deliveryAddress} when the authentication API is connected.`)}
-        >
-          <Text style={styles.resend}>Resend OTP to email in 00:30</Text>
+        <Pressable accessibilityRole="link" disabled={isResending} onPress={() => void resendOtp()}>
+          <Text style={[styles.resend, isResending ? styles.disabled : undefined]}>
+            {isResending ? 'Sending OTP…' : 'Resend OTP to email'}
+          </Text>
         </Pressable>
       }
       subtitle={`Enter the 6 digit code sent to ${deliveryAddress}.`}
@@ -61,7 +133,7 @@ export default function VerifyOtpScreen() {
             accessibilityLabel={`OTP digit ${index + 1}`}
             keyboardType="number-pad"
             key={index}
-            maxLength={1}
+            maxLength={index === 0 ? otpLength : 1}
             onChangeText={(value) => updateDigit(value, index)}
             onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
             ref={(input) => {
@@ -73,13 +145,26 @@ export default function VerifyOtpScreen() {
           />
         ))}
       </View>
-      <AppButton label="Verify & Continue" onPress={verifyCode} />
-      <Text style={styles.note}>Demo mode: any six digits will complete the UI flow.</Text>
+      <AppButton label="Verify & Continue" loading={isVerifying} onPress={() => void verifyCode()} />
+      {developmentCode ? (
+        <Text style={styles.developmentCode}>Development OTP: {developmentCode}</Text>
+      ) : (
+        <Text style={styles.note}>The code expires in 10 minutes.</Text>
+      )}
     </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
+  developmentCode: {
+    color: colors.doctor.primaryDark,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  disabled: {
+    opacity: 0.55,
+  },
   note: {
     color: colors.muted,
     fontSize: 11,
@@ -99,8 +184,8 @@ const styles = StyleSheet.create({
     width: 42,
   },
   otpInputFilled: {
-    borderColor: colors.patient.primary,
     backgroundColor: colors.patient.soft,
+    borderColor: colors.patient.primary,
   },
   otpRow: {
     flexDirection: 'row',

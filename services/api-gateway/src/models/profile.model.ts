@@ -11,7 +11,40 @@ type DoctorProfileInput = {
   specialty: string;
 };
 
+export type ListedDoctor = {
+  availabilityEnabled: boolean;
+  fullName: string;
+  id: string;
+  specialty: string;
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+};
+
 export class ProfileModel {
+  async listDoctors(): Promise<ListedDoctor[]> {
+    const profiles = await getPrismaClient().doctorProfile.findMany({
+      orderBy: [{ availabilityEnabled: 'desc' }, { fullName: 'asc' }],
+      select: {
+        availabilityEnabled: true,
+        fullName: true,
+        specialty: true,
+        user: {
+          select: {
+            id: true,
+          },
+        },
+        verificationStatus: true,
+      },
+    });
+
+    return profiles.map((profile) => ({
+      availabilityEnabled: profile.availabilityEnabled,
+      fullName: profile.fullName,
+      id: profile.user.id,
+      specialty: profile.specialty,
+      verificationStatus: profile.verificationStatus,
+    }));
+  }
+
   async findByUserId(userId: string) {
     return getPrismaClient().user.findUnique({
       where: { id: userId },

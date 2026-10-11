@@ -4,6 +4,7 @@ import type { AuthRole, OtpStore } from '../models/otp.model.js';
 import { TokenModel } from '../models/token.model.js';
 import { UserModel } from '../models/user.model.js';
 import type { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
+import type { OtpEmailSender } from '../services/otp-email.service.js';
 
 type OtpRequestBody = { email?: unknown; role?: unknown };
 type OtpVerificationBody = OtpRequestBody & { code?: unknown };
@@ -33,6 +34,7 @@ export function createAuthController(
   tokenModel: TokenModel,
   userModel: UserModel,
   otpDeliveryMode: 'development' | 'smtp',
+  otpEmailSender?: OtpEmailSender,
 ) {
   return {
     requestEmailOtp: async (request: Request<unknown, unknown, OtpRequestBody>, response: Response) => {
@@ -49,16 +51,6 @@ export function createAuthController(
         return;
       }
 
-      if (otpDeliveryMode === 'smtp') {
-        response.status(503).json({
-          error: {
-            code: 'EMAIL_TRANSPORT_UNAVAILABLE',
-            message: 'SMTP delivery has not been connected yet. Use development OTP mode locally.',
-          },
-        });
-        return;
-      }
-
       const result = await otpModel.create(email, role);
 
       if (!result.ok) {
@@ -66,6 +58,51 @@ export function createAuthController(
           error: {
             code: 'OTP_RATE_LIMITED',
             message: `Try again in ${result.retryAfterSeconds} seconds.`,
+          },
+        });
+        return;
+      }
+
+      if (otpDeliveryMode === 'smtp') {
+        if (!otpEmailSender) {
+          await otpModel.revoke(email, role, result.code);
+          response.status(503).json({
+            error: {
+              code: 'EMAIL_TRANSPORT_UNAVAILABLE',
+              message: 'SMTP email delivery is not configured on the server.',
+            },
+          });
+          return;
+        }
+
+        try {
+          await otpEmailSender.sendEmailOtp({
+            code: result.code,
+            email,
+            expiresInSeconds: result.expiresInSeconds,
+            role,
+          });
+        } catch (error) {
+          await otpModel.revoke(email, role, result.code).catch(() => undefined);
+          const reason = error instanceof Error ? error.message : 'Unknown SMTP error';
+          console.error('OTP email delivery failed.', { reason });
+
+          response.status(502).json({
+            error: {
+              code: 'EMAIL_DELIVERY_FAILED',
+              message: 'We could not send the verification email. Please try again shortly.',
+            },
+          });
+          return;
+        }
+
+        response.status(202).json({
+          data: {
+            delivery: 'smtp',
+            email,
+            expiresInSeconds: result.expiresInSeconds,
+            message: 'Verification code sent to your email address.',
+            role,
           },
         });
         return;

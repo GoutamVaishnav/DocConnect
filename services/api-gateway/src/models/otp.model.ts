@@ -35,6 +35,7 @@ type OtpVerificationResult =
 
 export type OtpStore = {
   create(email: string, role: AuthRole): Promise<OtpCreateResult>;
+  revoke(email: string, role: AuthRole, code: string): Promise<void>;
   verify(email: string, role: AuthRole, code: string): Promise<OtpVerificationResult>;
 };
 
@@ -60,6 +61,16 @@ export class OtpModel implements OtpStore {
     this.lastRequestedAt.set(key, now);
 
     return { code, expiresInSeconds: OTP_EXPIRY_MS / 1000, ok: true as const };
+  }
+
+  async revoke(email: string, role: AuthRole, code: string) {
+    const key = this.keyFor(email, role);
+    const pendingOtp = this.pendingOtps.get(key);
+
+    if (pendingOtp?.code === code) {
+      this.pendingOtps.delete(key);
+      this.lastRequestedAt.delete(key);
+    }
   }
 
   async verify(email: string, role: AuthRole, code: string): Promise<OtpVerificationResult> {
@@ -118,16 +129,37 @@ export class DatabaseOtpModel implements OtpStore {
     }
 
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    await this.prisma.emailOtpChallenge.create({
-      data: {
-        email,
-        expiresAt: new Date(now.getTime() + OTP_EXPIRY_MS),
-        otpHash: this.hashOtp(email, role, code),
-        role: role as UserRoleValue,
-      },
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.emailOtpChallenge.deleteMany({
+        where: {
+          email,
+          role: role as UserRoleValue,
+          verifiedAt: null,
+        },
+      });
+
+      await transaction.emailOtpChallenge.create({
+        data: {
+          email,
+          expiresAt: new Date(now.getTime() + OTP_EXPIRY_MS),
+          otpHash: this.hashOtp(email, role, code),
+          role: role as UserRoleValue,
+        },
+      });
     });
 
     return { code, expiresInSeconds: OTP_EXPIRY_MS / 1000, ok: true };
+  }
+
+  async revoke(email: string, role: AuthRole, code: string) {
+    await this.prisma.emailOtpChallenge.deleteMany({
+      where: {
+        email,
+        otpHash: this.hashOtp(email, role, code),
+        role: role as UserRoleValue,
+        verifiedAt: null,
+      },
+    });
   }
 
   async verify(email: string, role: AuthRole, code: string): Promise<OtpVerificationResult> {

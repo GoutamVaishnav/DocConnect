@@ -30,8 +30,8 @@ export default function ConsultationSubmittedScreen() {
           <Text style={styles.description}>Your consultation request is ready for doctor review.</Text>
 
           <View style={styles.note}>
-            <MaterialCommunityIcons color={colors.warning} name="information-outline" size={21} />
-            <Text style={styles.noteText}>This is a UI preview. A real request will be created once the backend is connected.</Text>
+            <MaterialCommunityIcons color={colors.patient.primary} name="shield-check-outline" size={21} />
+            <Text style={styles.noteText}>Your request has been securely sent and is waiting for a doctor to accept it.</Text>
           </View>
         </View>
 
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   },
   note: {
     alignItems: 'flex-start',
-    backgroundColor: colors.warningSoft,
+    backgroundColor: colors.patient.soft,
     borderRadius: radius.md,
     flexDirection: 'row',
     gap: spacing.xs,

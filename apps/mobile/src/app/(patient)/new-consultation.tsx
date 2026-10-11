@@ -19,8 +19,8 @@ export default function NewConsultationScreen() {
   const [duration, setDuration] = useState<ConsultationDuration | null>(draft.duration);
 
   function continueToPhotos() {
-    if (!symptoms.trim() || !duration) {
-      Alert.alert('Add your details', 'Please describe your symptoms and choose how long you have had them.');
+    if (symptoms.trim().length < 10 || !duration) {
+      Alert.alert('Add your details', 'Describe your symptoms in at least 10 characters and choose how long you have had them.');
       return;
     }
 

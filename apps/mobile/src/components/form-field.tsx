@@ -11,6 +11,7 @@ type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 type FormFieldProps = {
   accessibilityLabel: string;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCorrect?: boolean;
   icon: IconName;
   keyboardType?: KeyboardTypeOptions;
   onChangeText: (value: string) => void;
@@ -25,6 +26,7 @@ type FormFieldProps = {
 export function FormField({
   accessibilityLabel,
   autoCapitalize = 'none',
+  autoCorrect = false,
   icon,
   keyboardType = 'default',
   onChangeText,
@@ -41,7 +43,7 @@ export function FormField({
       <TextInput
         accessibilityLabel={accessibilityLabel}
         autoCapitalize={autoCapitalize}
-        autoCorrect={false}
+        autoCorrect={autoCorrect}
         keyboardType={keyboardType}
         onChangeText={onChangeText}
         onSubmitEditing={onSubmitEditing}

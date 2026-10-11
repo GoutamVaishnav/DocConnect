@@ -5,58 +5,73 @@ import { router } from 'expo-router';
 import { AppButton } from '@/components/app-button';
 import { AuthLayout } from '@/components/auth-layout';
 import { FormField } from '@/components/form-field';
+import { authApi, getApiErrorMessage } from '@/lib/api';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
 
-export default function DoctorLoginScreen() {
-  const [contact, setContact] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordHidden, setPasswordHidden] = useState(true);
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
-  function signIn() {
-    if (!contact.trim() || !password) {
-      Alert.alert('Missing details', 'Enter your professional email or phone number and password.');
+export default function DoctorLoginScreen() {
+  const [email, setEmail] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  async function requestOtp() {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!isValidEmail(normalizedEmail)) {
+      Alert.alert('Enter a valid email', 'Use your registered professional email address.');
       return;
     }
 
-    router.replace('/dashboard');
+    try {
+      setIsSending(true);
+      const response = await authApi.requestEmailOtp(normalizedEmail, 'DOCTOR');
+
+      router.push({
+        pathname: '/verify-otp',
+        params: {
+          email: response.email,
+          role: response.role,
+          developmentCode: response.developmentCode ?? '',
+        },
+      });
+    } catch (error) {
+      Alert.alert('OTP could not be sent', getApiErrorMessage(error));
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (
     <AuthLayout
       footer={
         <View style={styles.verificationNote}>
-          <Text style={styles.verificationTitle}>New to DocConnect?</Text>
+          <Text style={styles.verificationTitle}>Doctor access</Text>
           <Text style={styles.verificationText}>
-            Doctor registration and professional verification will be available in a later phase.
+            Sign in with the professional email registered for your doctor account.
           </Text>
         </View>
       }
       role="doctor"
-      subtitle="Sign in to manage your patient consultations."
+      subtitle="Enter your professional email and receive a secure one-time code."
       title="Doctor Login"
     >
       <FormField
-        accessibilityLabel="Professional email or phone"
-        icon="account-outline"
+        accessibilityLabel="Professional email"
+        autoCapitalize="none"
+        autoCorrect={false}
+        icon="email-outline"
         keyboardType="email-address"
-        onChangeText={setContact}
-        placeholder="Professional Email or Phone"
-        value={contact}
-      />
-      <FormField
-        accessibilityLabel="Password"
-        icon="lock-outline"
-        onChangeText={setPassword}
-        onSubmitEditing={signIn}
-        placeholder="Password"
+        onChangeText={setEmail}
+        onSubmitEditing={() => void requestOtp()}
+        placeholder="Professional Email"
         returnKeyType="go"
-        secureTextEntry={passwordHidden}
-        toggleSecureEntry={() => setPasswordHidden((current) => !current)}
-        value={password}
+        value={email}
       />
-      <AppButton label="Login" onPress={signIn} role="doctor" />
+      <AppButton label="Send OTP to Email" loading={isSending} onPress={() => void requestOtp()} role="doctor" />
     </AuthLayout>
   );
 }

@@ -10,7 +10,7 @@ The gateway source is intentionally split into simple folders: `routes`, `contro
 | --- | --- | --- |
 | `GET` | `/health` | Gateway health status |
 | `GET` | `/api/v1` | API version check |
-| `POST` | `/api/v1/auth/email-otp/request` | Generate an OTP for a patient or doctor email |
+| `POST` | `/api/v1/auth/email-otp/request` | Generate and deliver an OTP for a patient or doctor email |
 | `POST` | `/api/v1/auth/email-otp/verify` | Verify an OTP and receive a JWT access token |
 | `GET` | `/api/v1/auth/me` | Return the authenticated user from a Bearer token |
 | `GET` | `/api/v1/profile/me` | Return the current patient's or doctor's profile |
@@ -40,7 +40,7 @@ The gateway source is intentionally split into simple folders: `routes`, `contro
 }
 ```
 
-With `OTP_DELIVERY_MODE=development`, the response includes `developmentCode` for local testing. No email is sent. The code expires in ten minutes, requests have a sixty-second cooldown, and verification permits five attempts.
+With `OTP_DELIVERY_MODE=development`, the response includes `developmentCode` for local testing. No email is sent. With `OTP_DELIVERY_MODE=smtp`, the gateway sends the code through the configured SMTP provider and the response never contains the code. The code expires in ten minutes, requests have a sixty-second cooldown, and verification permits five attempts.
 
 ### Verify an OTP
 
@@ -213,6 +213,13 @@ JWT_ACCESS_EXPIRES_IN=7d
 CLOUDINARY_CLOUD_NAME="your-cloud-name"
 CLOUDINARY_API_KEY="your-api-key"
 CLOUDINARY_API_SECRET="your-api-secret"
+OTP_DELIVERY_MODE=smtp
+SMTP_HOST="smtp.your-provider.com"
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER="your-smtp-username"
+SMTP_PASSWORD="your-smtp-password-or-app-password"
+SMTP_FROM="DocConnect <no-reply@your-domain.com>"
 ```
 
-Production email delivery is intentionally not available until an SMTP/email provider and secret management are configured. For real patient health data, ensure your Cloudinary plan/configuration and broader hosting/security design meet the compliance obligations that apply to your deployment.
+When SMTP mode is enabled, gateway startup calls the provider's SMTP verification step before it begins accepting requests. Use `SMTP_SECURE=true` with an implicit TLS port (normally `465`), or `false` with STARTTLS on port `587`. Do not put any SMTP value in the Expo/mobile app. For real patient health data, ensure your Cloudinary plan/configuration and broader hosting/security design meet the compliance obligations that apply to your deployment.

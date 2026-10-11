@@ -63,6 +63,11 @@ function isUniqueConstraintError(error: unknown) {
 
 export function createProfileController(profileModel: ProfileModel) {
   return {
+    listDoctors: async (_request: AuthenticatedRequest, response: Response) => {
+      const doctors = await profileModel.listDoctors();
+      response.status(200).json({ data: { doctors } });
+    },
+
     getCurrentProfile: async (request: AuthenticatedRequest, response: Response) => {
       const profile = request.authUser ? await profileModel.findByUserId(request.authUser.id) : undefined;
 

@@ -12,6 +12,8 @@ export function createProfileRouter(jwtAccessSecret: string, jwtAccessExpiresIn:
   const requireDoctor = createRequireRole('DOCTOR');
   const profileController = createProfileController(new ProfileModel());
 
+  // Patients use this directory to see real doctors who have completed a profile.
+  router.get('/doctors', requireAuthentication, requirePatient, profileController.listDoctors);
   router.get('/me', requireAuthentication, profileController.getCurrentProfile);
   router.put('/patient', requireAuthentication, requirePatient, profileController.savePatientProfile);
   router.put('/doctor', requireAuthentication, requireDoctor, profileController.saveDoctorProfile);

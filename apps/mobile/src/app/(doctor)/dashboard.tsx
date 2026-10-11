@@ -1,29 +1,47 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/app-button';
 import { AppCard } from '@/components/app-card';
 import { BottomNav } from '@/components/bottom-nav';
 import { MetricCard } from '@/components/metric-card';
+import { formatConsultationDate } from '@/context/consultation-draft';
 import { useDoctorRequests } from '@/context/doctor-requests';
+import { useDoctorProfile } from '@/context/doctor-profile';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
 
-const activity = [
-  { detail: '2 mins ago', icon: 'inbox-arrow-down-outline', title: 'New request from Patient #1042' },
-  { detail: '1 hour ago', icon: 'check-circle-outline', title: 'Consultation completed' },
-  { detail: '2 hours ago', icon: 'message-text-outline', title: 'New message from Patient #987' },
-] as const;
-
 export default function DoctorDashboardScreen() {
-  const [available, setAvailable] = useState(true);
-  const { acceptedCases, completedCases, openRequests } = useDoctorRequests();
+  const { activeCases, completedCases, openRequests } = useDoctorRequests();
+  const { profile, setAvailability } = useDoctorProfile();
+  const available = profile?.availabilityEnabled ?? false;
+  const isVerified = profile?.verificationStatus === 'VERIFIED';
+  const verificationMessage = !profile
+    ? 'Complete your professional profile to start verification.'
+    : isVerified
+      ? 'Your professional profile is verified.'
+      : profile.verificationStatus === 'REJECTED'
+        ? 'Your verification needs attention. Please review your profile.'
+        : 'Your professional profile is waiting for verification.';
+  const activity = useMemo(() => [
+    ...openRequests.slice(0, 1).map((request) => ({ detail: formatConsultationDate(request.submittedAt), icon: 'inbox-arrow-down-outline' as const, route: '/open-requests' as const, title: `New request from ${request.patientLabel}` })),
+    ...activeCases.slice(0, 1).map((caseItem) => ({ detail: caseItem.acceptedAt ? formatConsultationDate(caseItem.acceptedAt) : 'Recently accepted', icon: 'message-text-outline' as const, route: '/my-cases' as const, title: `Active case: ${caseItem.concern}` })),
+    ...completedCases.slice(0, 1).map((caseItem) => ({ detail: caseItem.completedAt ? formatConsultationDate(caseItem.completedAt) : 'Recently completed', icon: 'check-circle-outline' as const, route: '/my-cases' as const, title: `Completed: ${caseItem.concern}` })),
+  ].slice(0, 3), [activeCases, completedCases, openRequests]);
+
+  async function updateAvailability(enabled: boolean) {
+    try {
+      await setAvailability(enabled);
+    } catch (error) {
+      Alert.alert('Could not update availability', error instanceof Error ? error.message : 'Please update your doctor profile first.');
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -35,8 +53,8 @@ export default function DoctorDashboardScreen() {
               <MaterialCommunityIcons color={colors.doctor.primaryDark} name="doctor" size={28} />
             </View>
             <View style={styles.greeting}>
-              <Text style={styles.name}>Dr. Sharma</Text>
-              <Text style={styles.specialty}>General Physician</Text>
+              <Text style={styles.name}>{profile?.fullName ?? 'Doctor profile required'}</Text>
+              <Text style={styles.specialty}>{profile?.specialty ?? 'Complete your professional profile'}</Text>
             </View>
             <Pressable
               accessibilityLabel="Notifications"
@@ -56,13 +74,14 @@ export default function DoctorDashboardScreen() {
                 <View>
                   <Text style={styles.availableTitle}>Available</Text>
                   <Text style={styles.availableDescription}>
-                    {available ? 'You can receive new requests' : 'New requests are paused'}
+                    {profile ? available ? 'You can receive new requests' : 'New requests are paused' : 'Complete profile to accept requests'}
                   </Text>
                 </View>
               </View>
               <Switch
                 accessibilityLabel="Change availability"
-                onValueChange={setAvailable}
+                disabled={!profile}
+                onValueChange={(value) => void updateAvailability(value)}
                 thumbColor={colors.surface}
                 trackColor={{ false: colors.border, true: colors.doctor.primary }}
                 value={available}
@@ -72,8 +91,8 @@ export default function DoctorDashboardScreen() {
 
           <View style={styles.metrics}>
             <MetricCard label="New Requests" role="doctor" value={String(openRequests.length)} />
-            <MetricCard label="Active Cases" role="doctor" value={String(3 + acceptedCases.length)} />
-            <MetricCard label="Completed" role="doctor" value={String(12 + completedCases.length)} />
+            <MetricCard label="Active Cases" role="doctor" value={String(activeCases.length)} />
+            <MetricCard label="Completed" role="doctor" value={String(completedCases.length)} />
           </View>
 
           <View style={styles.sectionHeader}>
@@ -85,21 +104,11 @@ export default function DoctorDashboardScreen() {
 
           <AppCard>
             <View style={styles.activityList}>
-              {activity.map((item, index) => (
+              {activity.length > 0 ? activity.map((item, index) => (
                 <Pressable
                   key={item.title}
                   onPress={() => {
-                    if (item.title === 'New request from Patient #1042') {
-                      router.push('/open-requests');
-                      return;
-                    }
-
-                    if (item.title === 'New message from Patient #987') {
-                      router.push({ pathname: '/chat/[conversationId]', params: { conversationId: 'doctor-patient-0987', role: 'doctor' } });
-                      return;
-                    }
-
-                    router.push('/my-cases');
+                    router.push(item.route);
                   }}
                   style={[styles.activityItem, index !== activity.length - 1 && styles.activityBorder]}
                 >
@@ -112,13 +121,13 @@ export default function DoctorDashboardScreen() {
                   </View>
                   <MaterialCommunityIcons color={colors.muted} name="chevron-right" size={21} />
                 </Pressable>
-              ))}
+              )) : <View style={styles.noActivity}><Text style={styles.noActivityText}>New consultation activity will appear here.</Text></View>}
             </View>
           </AppCard>
 
           <View style={styles.verifiedCard}>
-            <MaterialCommunityIcons color={colors.doctor.primary} name="check-decagram" size={22} />
-            <Text style={styles.verifiedText}>Your professional profile is verified.</Text>
+            <MaterialCommunityIcons color={isVerified ? colors.success : colors.warning} name={isVerified ? 'check-decagram' : 'clock-outline'} size={22} />
+            <Text style={styles.verifiedText}>{verificationMessage}</Text>
           </View>
 
           <AppButton
@@ -235,6 +244,14 @@ const styles = StyleSheet.create({
   metrics: {
     flexDirection: 'row',
     gap: spacing.xs,
+  },
+  noActivity: {
+    paddingVertical: spacing.lg,
+  },
+  noActivityText: {
+    color: colors.muted,
+    fontSize: 12,
+    textAlign: 'center',
   },
   name: {
     color: colors.navy,

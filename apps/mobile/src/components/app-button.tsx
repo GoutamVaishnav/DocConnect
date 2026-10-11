@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet, Text, View, type PressableStateCallbackType } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type PressableStateCallbackType } from 'react-native';
 
 import { colors, type AppRole, roleColors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
@@ -15,6 +15,7 @@ type AppButtonProps = {
   variant?: 'primary' | 'outline' | 'ghost';
   icon?: IconName;
   disabled?: boolean;
+  loading?: boolean;
 };
 
 export function AppButton({
@@ -24,25 +25,29 @@ export function AppButton({
   variant = 'primary',
   icon,
   disabled = false,
+  loading = false,
 }: AppButtonProps) {
   const theme = roleColors(role);
   const isPrimary = variant === 'primary';
+  const isDisabled = disabled || loading;
 
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={disabled}
+      disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }: PressableStateCallbackType) => [
         styles.button,
         isPrimary && { backgroundColor: theme.primary },
         variant === 'outline' && { borderColor: theme.primary, borderWidth: 1.5 },
         variant === 'ghost' && styles.ghost,
-        (pressed || disabled) && styles.pressed,
+        (pressed || isDisabled) && styles.pressed,
       ]}
     >
       <View style={styles.content}>
-        {icon ? (
+        {loading ? (
+          <ActivityIndicator color={isPrimary ? colors.surface : theme.primary} />
+        ) : icon ? (
           <MaterialCommunityIcons
             color={isPrimary ? colors.surface : theme.primary}
             name={icon}
