@@ -2,6 +2,7 @@ import type { Response } from 'express';
 
 import type { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { MessageModel } from '../models/message.model.js';
+import type { ChatEventPublisher } from '../realtime/chat-socket.js';
 
 type IdParams = { consultationId?: string };
 type MessageBody = { body?: unknown };
@@ -35,7 +36,7 @@ function readPageOptions(query: MessageQuery) {
   return { cursor, limit };
 }
 
-export function createMessageController(messageModel: MessageModel) {
+export function createMessageController(messageModel: MessageModel, chatEvents?: ChatEventPublisher) {
   return {
     list: async (
       request: AuthenticatedRequest & { params: IdParams; query: MessageQuery },
@@ -85,6 +86,15 @@ export function createMessageController(messageModel: MessageModel) {
 
       const recipientId = sender.role === 'PATIENT' ? conversation.doctorId : conversation.patientId;
       const message = await messageModel.sendMessage({ body, consultationId, sender }, recipientId);
+
+      chatEvents?.publishMessage({
+        body: message.body,
+        consultationId: message.consultationId,
+        createdAt: message.createdAt,
+        id: message.id,
+        senderId: message.senderId,
+        senderRole: message.senderRole,
+      });
 
       response.status(201).json({ data: { message } });
     },

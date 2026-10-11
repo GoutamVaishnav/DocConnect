@@ -9,9 +9,10 @@ import { createAuthRouter } from './routes/auth.routes.js';
 import { createConsultationRouter } from './routes/consultation.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
 import { createProfileRouter } from './routes/profile.routes.js';
+import type { ChatEventPublisher } from './realtime/chat-socket.js';
 import type { OtpEmailSender } from './services/otp-email.service.js';
 
-function getAllowedOrigins() {
+export function getAllowedOrigins(): string[] | true {
   const configuredOrigins = env.corsOrigin;
 
   if (!configuredOrigins || configuredOrigins === '*') {
@@ -22,10 +23,11 @@ function getAllowedOrigins() {
 }
 
 type CreateAppOptions = {
+  chatEvents?: ChatEventPublisher;
   otpEmailSender?: OtpEmailSender;
 };
 
-export function createApp({ otpEmailSender }: CreateAppOptions = {}) {
+export function createApp({ chatEvents, otpEmailSender }: CreateAppOptions = {}) {
   const app = express();
 
   app.disable('x-powered-by');
@@ -53,7 +55,7 @@ export function createApp({ otpEmailSender }: CreateAppOptions = {}) {
       otpEmailSender,
     ),
   );
-  app.use('/api/v1/consultations', createConsultationRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn));
+  app.use('/api/v1/consultations', createConsultationRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn, chatEvents));
   app.use('/api/v1/profile', createProfileRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn));
   app.use(notFoundHandler);
   app.use(errorHandler);

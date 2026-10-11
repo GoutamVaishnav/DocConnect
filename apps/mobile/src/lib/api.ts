@@ -149,6 +149,11 @@ function getApiBaseUrl() {
   return configuredApiBaseUrl;
 }
 
+// Socket.IO connects to the gateway root, while REST requests use /api/v1.
+export function getRealtimeServerUrl() {
+  return getApiBaseUrl().replace(/\/api\/v1$/i, '');
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { accessToken?: string } = {},

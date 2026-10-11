@@ -9,14 +9,19 @@ import { ConsultationAttachmentModel } from '../models/consultation-attachment.m
 import { ConsultationModel } from '../models/consultation.model.js';
 import { MessageModel } from '../models/message.model.js';
 import { TokenModel } from '../models/token.model.js';
+import type { ChatEventPublisher } from '../realtime/chat-socket.js';
 
-export function createConsultationRouter(jwtAccessSecret: string, jwtAccessExpiresIn: string) {
+export function createConsultationRouter(
+  jwtAccessSecret: string,
+  jwtAccessExpiresIn: string,
+  chatEvents?: ChatEventPublisher,
+) {
   const router = Router();
   const requireAuthentication = createRequireAuthentication(new TokenModel(jwtAccessSecret, jwtAccessExpiresIn));
   const requirePatient = createRequireRole('PATIENT');
   const requireDoctor = createRequireRole('DOCTOR');
   const consultationController = createConsultationController(new ConsultationModel());
-  const messageController = createMessageController(new MessageModel());
+  const messageController = createMessageController(new MessageModel(), chatEvents);
   const uploadController = createUploadController(new ConsultationAttachmentModel());
 
   router.post('/', requireAuthentication, requirePatient, consultationController.create);

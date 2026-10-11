@@ -1,7 +1,10 @@
 import 'dotenv/config';
 
-import { createApp } from './app.js';
+import { createServer } from 'node:http';
+
+import { createApp, getAllowedOrigins } from './app.js';
 import { env } from './config/env.js';
+import { createChatSocketServer, type ChatEventPublisher } from './realtime/chat-socket.js';
 import { SmtpOtpEmailSender } from './services/otp-email.service.js';
 
 function requireStartupConfiguration() {
@@ -47,9 +50,23 @@ async function startServer() {
     console.log('SMTP connection verified for OTP email delivery.');
   }
 
-  const app = createApp({ otpEmailSender });
+  // The wrapper lets Express use the publisher before the Socket.IO server is attached.
+  // It also keeps both REST and Socket.IO on the same HTTP server and port.
+  let socketEvents: ChatEventPublisher | undefined;
+  const app = createApp({
+    chatEvents: {
+      publishMessage: (message) => socketEvents?.publishMessage(message),
+    },
+    otpEmailSender,
+  });
+  const httpServer = createServer(app);
+  socketEvents = createChatSocketServer(httpServer, {
+    corsOrigin: getAllowedOrigins(),
+    jwtAccessExpiresIn: env.jwtAccessExpiresIn,
+    jwtAccessSecret: env.jwtAccessSecret || '',
+  });
 
-  app.listen(env.port, () => {
+  httpServer.listen(env.port, () => {
     console.log(`DocConnect API Gateway is listening on http://localhost:${env.port}`);
   });
 }
