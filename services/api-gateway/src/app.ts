@@ -6,7 +6,9 @@ import morgan from 'morgan';
 import { env } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
 import { createAuthRouter } from './routes/auth.routes.js';
+import { createConsultationRouter } from './routes/consultation.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
+import { createProfileRouter } from './routes/profile.routes.js';
 
 function getAllowedOrigins() {
   const configuredOrigins = env.corsOrigin;
@@ -36,7 +38,17 @@ export function createApp() {
     });
   });
 
-  app.use('/api/v1/auth', createAuthRouter(env.otpDeliveryMode));
+  app.use(
+    '/api/v1/auth',
+    createAuthRouter(
+      env.otpDeliveryMode,
+      Boolean(env.databaseUrl),
+      env.jwtAccessSecret || '',
+      env.jwtAccessExpiresIn,
+    ),
+  );
+  app.use('/api/v1/consultations', createConsultationRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn));
+  app.use('/api/v1/profile', createProfileRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn));
   app.use(notFoundHandler);
   app.use(errorHandler);
 

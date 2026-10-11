@@ -11,6 +11,9 @@
   "scripts": {
     "mobile": "npm run start --workspace @docconnect/mobile",
     "gateway": "npm run dev --workspace @docconnect/api-gateway",
+    "database:generate": "npm run generate --workspace @docconnect/database",
+    "database:migrate": "npm run migrate:dev --workspace @docconnect/database",
+    "database:studio": "npm run studio --workspace @docconnect/database",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint:mobile": "npm run lint --workspace @docconnect/mobile"
   },

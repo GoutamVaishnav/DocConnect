@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ConsultationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MessageSenderRole {
+  PATIENT
+  DOCTOR
+}
+
+enum ConsultationAttachmentKind {
+  PATIENT_IMAGE
+}
+
+model User {
+  id                              String                   @id @default(uuid()) @db.Uuid
+  email                           String                   @unique
+  role                            UserRole
+  emailVerifiedAt                 DateTime?                @map("email_verified_at") @db.Timestamptz(6)
+  createdAt                       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                       DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  patientProfile                  PatientProfile?
+  doctorProfile                   DoctorProfile?
+  patientConsultations            Consultation[]           @relation("PatientConsultations")
+  doctorConsultations             Consultation[]           @relation("DoctorConsultations")
+  declinedConsultations           ConsultationDecline[]    @relation("DoctorDeclines")
+  uploadedConsultationAttachments ConsultationAttachment[] @relation("UploadedConsultationAttachments")
+  sentMessages                    ConsultationMessage[]
+  notifications                   Notification[]
+
+  @@map("users")
+}
+
+model PatientProfile {
+  userId      String    @id @map("user_id") @db.Uuid
+  fullName    String    @map("full_name")
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("patient_profiles")
+}
+
+model DoctorProfile {
+  userId              String             @id @map("user_id") @db.Uuid
+  fullName            String             @map("full_name")
+  specialty           String
+  registrationNumber  String?            @unique @map("registration_number")
+  availabilityEnabled Boolean            @default(false) @map("availability_enabled")
+  verificationStatus  VerificationStatus @default(PENDING) @map("verification_status")
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("doctor_profiles")
+}
+
+model EmailOtpChallenge {
+  id         String    @id @default(uuid()) @db.Uuid
+  email      String
+  role       UserRole
+  otpHash    String    @map("otp_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+  attempts   Int       @default(0) @db.SmallInt
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([email, role, expiresAt(sort: Desc)], map: "email_otp_challenges_lookup_idx")
+  @@map("email_otp_challenges")
+}
+
+model Consultation {
+  id               String                   @id @default(uuid()) @db.Uuid
+  patientId        String                   @map("patient_id") @db.Uuid
+  doctorId         String?                  @map("doctor_id") @db.Uuid
+  concernTitle     String                   @map("concern_title")
+  symptoms         String
+  durationText     String                   @map("duration_text")
+  severity         String?
+  photoUrls        String[]                 @default([]) @map("photo_urls")
+  status           ConsultationStatus       @default(PENDING)
+  doctorNotes      String?                  @map("doctor_notes")
+  careInstructions String?                  @map("care_instructions")
+  prescriptionUrl  String?                  @map("prescription_url")
+  acceptedAt       DateTime?                @map("accepted_at") @db.Timestamptz(6)
+  completedAt      DateTime?                @map("completed_at") @db.Timestamptz(6)
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  patient          User                     @relation("PatientConsultations", fields: [patientId], references: [id])
+  doctor           User?                    @relation("DoctorConsultations", fields: [doctorId], references: [id])
+  declines         ConsultationDecline[]
+  attachments      ConsultationAttachment[]
+  messages         ConsultationMessage[]
+
+  @@index([patientId, status, createdAt(sort: Desc)], map: "consultations_patient_status_idx")
+  @@index([doctorId, status, createdAt(sort: Desc)], map: "consultations_doctor_status_idx")
+  @@map("consultations")
+}
+
+model ConsultationAttachment {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  consultationId     String                     @map("consultation_id") @db.Uuid
+  uploadedById       String                     @map("uploaded_by_id") @db.Uuid
+  kind               ConsultationAttachmentKind @default(PATIENT_IMAGE)
+  cloudinaryPublicId String                     @unique @map("cloudinary_public_id")
+  originalFileName   String                     @map("original_file_name")
+  mimeType           String                     @map("mime_type")
+  fileFormat         String                     @map("file_format")
+  bytes              Int
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  consultation       Consultation               @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  uploadedBy         User                       @relation("UploadedConsultationAttachments", fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([consultationId, kind, createdAt], map: "consultation_attachments_timeline_idx")
+  @@map("consultation_attachments")
+}
+
+model ConsultationDecline {
+  id             String       @id @default(uuid()) @db.Uuid
+  consultationId String       @map("consultation_id") @db.Uuid
+  doctorId       String       @map("doctor_id") @db.Uuid
+  reason         String?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  doctor         User         @relation("DoctorDeclines", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([consultationId, doctorId])
+  @@index([doctorId, createdAt(sort: Desc)])
+  @@map("consultation_declines")
+}
+
+model ConsultationMessage {
+  id             String            @id @default(uuid()) @db.Uuid
+  consultationId String            @map("consultation_id") @db.Uuid
+  senderId       String            @map("sender_id") @db.Uuid
+  senderRole     MessageSenderRole @map("sender_role")
+  body           String
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  consultation   Consultation      @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  sender         User              @relation(fields: [senderId], references: [id])
+
+  @@index([consultationId, createdAt], map: "consultation_messages_timeline_idx")
+  @@map("consultation_messages")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  title     String
+  body      String
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt(sort: Desc)], map: "notifications_user_timeline_idx")
+  @@map("notifications")
+}

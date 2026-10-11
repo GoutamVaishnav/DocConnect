@@ -10,6 +10,10 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Generated Prisma client and local SQLite databases
+services/database/src/generated/
+*.db
+
 # Environment files (examples remain committed)
 .env
 .env.local

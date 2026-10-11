@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express';
 
-import type { AuthRole, OtpModel } from '../models/otp.model.js';
+import type { AuthRole, OtpStore } from '../models/otp.model.js';
+import { TokenModel } from '../models/token.model.js';
+import { UserModel } from '../models/user.model.js';
+import type { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 
 type OtpRequestBody = { email?: unknown; role?: unknown };
 type OtpVerificationBody = OtpRequestBody & { code?: unknown };
@@ -25,9 +28,14 @@ function sendValidationError(response: Response, message: string) {
   response.status(400).json({ error: { code: 'VALIDATION_ERROR', message } });
 }
 
-export function createAuthController(otpModel: OtpModel, otpDeliveryMode: 'development' | 'smtp') {
+export function createAuthController(
+  otpModel: OtpStore,
+  tokenModel: TokenModel,
+  userModel: UserModel,
+  otpDeliveryMode: 'development' | 'smtp',
+) {
   return {
-    requestEmailOtp: (request: Request<unknown, unknown, OtpRequestBody>, response: Response) => {
+    requestEmailOtp: async (request: Request<unknown, unknown, OtpRequestBody>, response: Response) => {
       const email = readEmail(request.body.email);
       const role = readRole(request.body.role);
 
@@ -51,7 +59,7 @@ export function createAuthController(otpModel: OtpModel, otpDeliveryMode: 'devel
         return;
       }
 
-      const result = otpModel.create(email, role);
+      const result = await otpModel.create(email, role);
 
       if (!result.ok) {
         response.status(429).json({
@@ -75,7 +83,7 @@ export function createAuthController(otpModel: OtpModel, otpDeliveryMode: 'devel
       });
     },
 
-    verifyEmailOtp: (request: Request<unknown, unknown, OtpVerificationBody>, response: Response) => {
+    verifyEmailOtp: async (request: Request<unknown, unknown, OtpVerificationBody>, response: Response) => {
       const email = readEmail(request.body.email);
       const role = readRole(request.body.role);
       const code = typeof request.body.code === 'string' ? request.body.code.trim() : '';
@@ -85,16 +93,17 @@ export function createAuthController(otpModel: OtpModel, otpDeliveryMode: 'devel
         return;
       }
 
-      const result = otpModel.verify(email, role, code);
+      const result = await otpModel.verify(email, role, code);
 
       if (!result.ok) {
         const messages = {
           attempts_exceeded: 'Too many verification attempts. Request a new OTP.',
           expired: 'OTP expired or was not requested. Request a new OTP.',
           invalid_code: 'The OTP code is incorrect.',
+          role_mismatch: 'This email is already registered with a different role.',
         } as const;
 
-        response.status(result.reason === 'invalid_code' ? 401 : 410).json({
+        response.status(result.reason === 'invalid_code' ? 401 : result.reason === 'role_mismatch' ? 409 : 410).json({
           error: {
             code: result.reason.toUpperCase(),
             message: messages[result.reason],
@@ -106,11 +115,28 @@ export function createAuthController(otpModel: OtpModel, otpDeliveryMode: 'devel
 
       response.status(200).json({
         data: {
-          // Development only. A signed access token will replace this after real auth is added.
-          developmentSessionToken: `dev-session-${result.sessionId}`,
-          user: { email, role },
+          accessToken: tokenModel.createAccessToken(result.user),
+          tokenType: 'Bearer',
+          user: result.user,
         },
       });
+    },
+
+    getCurrentUser: async (request: AuthenticatedRequest, response: Response) => {
+      const tokenUser = request.authUser;
+      const user = tokenUser ? await userModel.findAuthenticatedUserById(tokenUser.id) : undefined;
+
+      if (!user) {
+        response.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'The authenticated user no longer exists.',
+          },
+        });
+        return;
+      }
+
+      response.status(200).json({ data: { user } });
     },
   };
 }

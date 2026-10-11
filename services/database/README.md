@@ -1,12 +1,30 @@
-# DocConnect database schema
+# DocConnect database
 
-`schema/001_initial.sql` is the first PostgreSQL schema for DocConnect. It is not automatically executed yet, because a PostgreSQL instance and migration runner have not been configured in this local project.
+This package holds the shared Prisma schema and the generated, type-safe database client. The cloud database is Prisma Postgres; a local PostgreSQL installation is not required.
 
-## Before running it
+## Structure
 
-1. Install PostgreSQL locally.
-2. Create a dedicated development database such as `docconnect_dev`.
-3. Set `DATABASE_URL` in your local `.env` file.
-4. Run the SQL through `psql` or the migration tool selected in the next backend phase.
+```text
+prisma/schema.prisma        Database models and enums
+prisma/migrations/          Version-controlled migration files
+src/client.ts               Shared Prisma Client singleton
+schema/001_initial.sql      Original SQL reference (do not execute alongside Prisma migrations)
+```
 
-The schema covers users, role-specific profiles, email OTP challenges, consultations, messages, and notification records. It deliberately holds no production medical data in the repository.
+## Environment variables
+
+Create `services/database/.env` from `.env.example`.
+
+- `DATABASE_URL` is the pooled URL for runtime queries.
+- `DIRECT_URL` is the direct URL for Prisma migrations and Studio. Add it from Prisma Console before the next schema change.
+
+## Commands
+
+```powershell
+npm run generate --workspace @docconnect/database
+npm run migrate:dev --workspace @docconnect/database -- --name describe_change
+npm run migrate:deploy --workspace @docconnect/database
+npm run studio --workspace @docconnect/database
+```
+
+The migrations create users, role-specific profiles, email OTP challenges, consultation workflow/summary fields, messages, and notifications. No production medical data belongs in this repository.
