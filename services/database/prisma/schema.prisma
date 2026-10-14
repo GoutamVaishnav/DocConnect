@@ -31,8 +31,25 @@ enum MessageSenderRole {
   DOCTOR
 }
 
+enum MessageAttachmentKind {
+  IMAGE
+  FILE
+}
+
 enum ConsultationAttachmentKind {
   PATIENT_IMAGE
+}
+
+enum NotificationType {
+  CONSULTATION_REQUEST
+  CONSULTATION_ACCEPTED
+  CONSULTATION_COMPLETED
+  CHAT_MESSAGE
+}
+
+enum DevicePlatform {
+  ANDROID
+  IOS
 }
 
 model User {
@@ -50,6 +67,7 @@ model User {
   uploadedConsultationAttachments ConsultationAttachment[] @relation("UploadedConsultationAttachments")
   sentMessages                    ConsultationMessage[]
   notifications                   Notification[]
+  pushTokens                      DevicePushToken[]
 
   @@map("users")
 }
@@ -115,6 +133,7 @@ model Consultation {
   declines         ConsultationDecline[]
   attachments      ConsultationAttachment[]
   messages         ConsultationMessage[]
+  notifications    Notification[]
 
   @@index([patientId, status, createdAt(sort: Desc)], map: "consultations_patient_status_idx")
   @@index([doctorId, status, createdAt(sort: Desc)], map: "consultations_doctor_status_idx")
@@ -159,23 +178,59 @@ model ConsultationMessage {
   senderId       String            @map("sender_id") @db.Uuid
   senderRole     MessageSenderRole @map("sender_role")
   body           String
+  readAt         DateTime?         @map("read_at") @db.Timestamptz(6)
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   consultation   Consultation      @relation(fields: [consultationId], references: [id], onDelete: Cascade)
   sender         User              @relation(fields: [senderId], references: [id])
+  attachments    ConsultationMessageAttachment[]
 
   @@index([consultationId, createdAt], map: "consultation_messages_timeline_idx")
+  @@index([consultationId, senderId, readAt], map: "consultation_messages_read_receipt_idx")
   @@map("consultation_messages")
 }
 
+model ConsultationMessageAttachment {
+  id                 String                @id @default(uuid()) @db.Uuid
+  messageId          String                @map("message_id") @db.Uuid
+  kind               MessageAttachmentKind
+  cloudinaryPublicId String                @unique @map("cloudinary_public_id")
+  originalFileName   String                @map("original_file_name")
+  mimeType           String                @map("mime_type")
+  fileFormat         String                @map("file_format")
+  bytes              Int
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  message            ConsultationMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId, createdAt], map: "consultation_message_attachments_timeline_idx")
+  @@map("consultation_message_attachments")
+}
+
 model Notification {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  title     String
-  body      String
-  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  consultationId String?          @map("consultation_id") @db.Uuid
+  type           NotificationType
+  title          String
+  body           String
+  readAt         DateTime?        @map("read_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consultation   Consultation?    @relation(fields: [consultationId], references: [id], onDelete: SetNull)
 
   @@index([userId, readAt, createdAt(sort: Desc)], map: "notifications_user_timeline_idx")
+  @@index([consultationId])
   @@map("notifications")
+}
+
+model DevicePushToken {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String         @map("user_id") @db.Uuid
+  token     String         @unique
+  platform  DevicePlatform
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_push_tokens")
 }

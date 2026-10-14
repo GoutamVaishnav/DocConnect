@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/app-button';
 import { useAuth } from '@/context/auth';
+import { goBackOr } from '@/lib/navigation';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
@@ -31,7 +32,7 @@ export default function PatientLogoutScreen() {
         </View>
         <View style={styles.footer}>
           <AppButton label="Logout" onPress={() => void logout()} role="patient" />
-          <AppButton label="Cancel" onPress={() => router.back()} variant="ghost" />
+          <AppButton label="Cancel" onPress={() => goBackOr('/patient-profile')} variant="ghost" />
         </View>
       </SafeAreaView>
     </View>

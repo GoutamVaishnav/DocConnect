@@ -1,16 +1,20 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { router } from 'expo-router';
+import type { Href } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
+import type { AppRole } from '@/theme/colors';
+import { goBackOr } from '@/lib/navigation';
 import { spacing } from '@/theme/spacing';
 
-type ScreenHeaderProps = { title: string };
+type ScreenHeaderProps = { fallback?: Href; role?: AppRole; title: string };
 
-export function ScreenHeader({ title }: ScreenHeaderProps) {
+export function ScreenHeader({ fallback, role = 'patient', title }: ScreenHeaderProps) {
+  const defaultFallback = role === 'doctor' ? '/dashboard' : '/home';
+
   return (
     <View style={styles.header}>
-      <Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => router.back()} style={styles.backButton}>
+      <Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => goBackOr(fallback ?? defaultFallback)} style={styles.backButton}>
         <MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} />
       </Pressable>
       <Text style={styles.title}>{title}</Text>

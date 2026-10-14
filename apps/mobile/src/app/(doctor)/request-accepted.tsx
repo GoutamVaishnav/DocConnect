@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/app-button';
 import { useDoctorRequests } from '@/context/doctor-requests';
+import { openChat } from '@/lib/chat-navigation';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
@@ -14,7 +15,7 @@ export default function RequestAcceptedScreen() {
   const { getRequest } = useDoctorRequests();
   const request = requestId ? getRequest(requestId) : undefined;
 
-  return <View style={styles.container}><SafeAreaView style={styles.safeArea}><View style={styles.content}><View style={styles.illustration}><View style={styles.clipboard}><MaterialCommunityIcons color={colors.doctor.primary} name="clipboard-check-outline" size={68} /></View><View style={styles.checkCircle}><MaterialCommunityIcons color={colors.surface} name="check" size={28} /></View></View><Text style={styles.title}>Request Accepted!</Text><Text style={styles.description}>{request ? `${request.patientLabel}'s ${request.concern.toLowerCase()} consultation is now in your active cases.` : 'The consultation is now in your active cases.'}</Text><View style={styles.note}><MaterialCommunityIcons color={colors.doctor.primary} name="shield-check-outline" size={21} /><Text style={styles.noteText}>The patient can now see that their consultation was accepted and secure chat is available.</Text></View></View><View style={styles.footer}>{requestId ? <AppButton label="View Case" onPress={() => router.replace({ pathname: '/cases/[caseId]', params: { caseId: requestId } })} role="doctor" variant="outline" /> : null}<AppButton icon="message-text-outline" label="Go to Chat" onPress={() => request ? router.replace({ pathname: '/chat/[conversationId]', params: { conversationId: request.id, role: 'doctor' } }) : router.replace('/my-cases')} role="doctor" /></View></SafeAreaView></View>;
+  return <View style={styles.container}><SafeAreaView style={styles.safeArea}><View style={styles.content}><View style={styles.illustration}><View style={styles.clipboard}><MaterialCommunityIcons color={colors.doctor.primary} name="clipboard-check-outline" size={68} /></View><View style={styles.checkCircle}><MaterialCommunityIcons color={colors.surface} name="check" size={28} /></View></View><Text style={styles.title}>Request Accepted!</Text><Text style={styles.description}>{request ? `${request.patientLabel}'s ${request.concern.toLowerCase()} consultation is now in your active cases.` : 'The consultation is now in your active cases.'}</Text><View style={styles.note}><MaterialCommunityIcons color={colors.doctor.primary} name="shield-check-outline" size={21} /><Text style={styles.noteText}>The patient can now see that their consultation was accepted and secure chat is available.</Text></View></View><View style={styles.footer}>{requestId ? <AppButton label="View Case" onPress={() => router.replace({ pathname: '/cases/[caseId]', params: { caseId: requestId } })} role="doctor" variant="outline" /> : null}<AppButton icon="message-text-outline" label="Go to Chat" onPress={() => request ? openChat(request.id, 'doctor') : router.replace('/my-cases')} role="doctor" /></View></SafeAreaView></View>;
 }
 
 const styles = StyleSheet.create({

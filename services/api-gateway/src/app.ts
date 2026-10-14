@@ -9,7 +9,11 @@ import { createAuthRouter } from './routes/auth.routes.js';
 import { createConsultationRouter } from './routes/consultation.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
 import { createProfileRouter } from './routes/profile.routes.js';
+import { createNotificationRouter } from './routes/notification.routes.js';
 import type { ChatEventPublisher } from './realtime/chat-socket.js';
+import { NotificationModel } from './models/notification.model.js';
+import { PushTokenModel } from './models/push-token.model.js';
+import { NotificationService } from './services/notification.service.js';
 import type { OtpEmailSender } from './services/otp-email.service.js';
 
 export function getAllowedOrigins(): string[] | true {
@@ -29,6 +33,12 @@ type CreateAppOptions = {
 
 export function createApp({ chatEvents, otpEmailSender }: CreateAppOptions = {}) {
   const app = express();
+  const notificationService = new NotificationService(
+    new NotificationModel(),
+    new PushTokenModel(),
+    chatEvents,
+    env.expoPushAccessToken,
+  );
 
   app.disable('x-powered-by');
   app.use(helmet());
@@ -55,8 +65,12 @@ export function createApp({ chatEvents, otpEmailSender }: CreateAppOptions = {})
       otpEmailSender,
     ),
   );
-  app.use('/api/v1/consultations', createConsultationRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn, chatEvents));
+  app.use(
+    '/api/v1/consultations',
+    createConsultationRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn, chatEvents, notificationService),
+  );
   app.use('/api/v1/profile', createProfileRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn));
+  app.use('/api/v1/notifications', createNotificationRouter(env.jwtAccessSecret || '', env.jwtAccessExpiresIn, notificationService));
   app.use(notFoundHandler);
   app.use(errorHandler);
 

@@ -6,6 +6,7 @@ import {
   consultationStatuses,
   type ConsultationStatus,
 } from '../models/consultation.model.js';
+import { NotificationService } from '../services/notification.service.js';
 
 type CreateConsultationBody = {
   concernTitle?: unknown;
@@ -102,7 +103,10 @@ function readListOptions(query: ListQuery) {
   return limit && isValidStatus ? { valid: true as const, value: { limit, status: status as ConsultationStatus | undefined } } : { valid: false as const };
 }
 
-export function createConsultationController(consultationModel: ConsultationModel) {
+export function createConsultationController(
+  consultationModel: ConsultationModel,
+  notificationService?: NotificationService,
+) {
   return {
     create: async (
       request: AuthenticatedRequest & { body: CreateConsultationBody },
@@ -131,6 +135,7 @@ export function createConsultationController(consultationModel: ConsultationMode
         severity: severity.value,
         symptoms,
       });
+      await notificationService?.notifyAvailableDoctors(consultation.id);
       response.status(201).json({ data: { consultation } });
     },
 
@@ -177,6 +182,13 @@ export function createConsultationController(consultationModel: ConsultationMode
         return;
       }
 
+      await notificationService?.notifyUsers([consultation.patientId], {
+        body: 'A doctor accepted your consultation. You can now start the chat.',
+        consultationId: consultation.id,
+        title: 'Consultation accepted',
+        type: 'CONSULTATION_ACCEPTED',
+      });
+
       response.status(200).json({ data: { consultation } });
     },
 
@@ -202,6 +214,13 @@ export function createConsultationController(consultationModel: ConsultationMode
         sendError(response, 409, 'CONSULTATION_UNAVAILABLE', 'This consultation has already been accepted, cancelled, or completed.');
         return;
       }
+
+      await notificationService?.notifyUsers([consultation.patientId], {
+        body: 'Your doctor completed this consultation. Review the care instructions when ready.',
+        consultationId: consultation.id,
+        title: 'Consultation completed',
+        type: 'CONSULTATION_COMPLETED',
+      });
 
       response.status(200).json({ data: { consultation } });
     },

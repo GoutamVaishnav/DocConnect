@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -30,8 +30,9 @@ export default function NewConsultationScreen() {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardAvoidingView}>
+        <SafeAreaView edges={['top']} style={styles.safeArea}>
+          <ScrollView contentContainerStyle={styles.content} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <ConsultationHeader step={1} title="New Consultation" />
 
           <View style={styles.heading}>
@@ -78,8 +79,9 @@ export default function NewConsultationScreen() {
           </View>
 
           <AppButton label="Next" onPress={continueToPhotos} />
-        </ScrollView>
-      </SafeAreaView>
+          </ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -151,6 +153,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginTop: spacing.md,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   radio: {
     alignItems: 'center',

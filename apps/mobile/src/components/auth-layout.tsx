@@ -1,11 +1,11 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { ReactNode } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandMark } from '@/components/brand-mark';
+import { goBackOr } from '@/lib/navigation';
 import { colors, type AppRole, roleColors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -24,12 +24,17 @@ export function AuthLayout({ children, footer, role = 'patient', subtitle, title
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardAvoidingView}>
+        <SafeAreaView edges={['top']} style={styles.safeArea}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+          >
           <Pressable
             accessibilityLabel="Go back"
             hitSlop={10}
-            onPress={() => router.back()}
+            onPress={() => goBackOr('/')}
             style={styles.backButton}
           >
             <MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} />
@@ -47,8 +52,9 @@ export function AuthLayout({ children, footer, role = 'patient', subtitle, title
 
           <View style={styles.form}>{children}</View>
           {footer ? <View style={styles.footer}>{footer}</View> : null}
-        </ScrollView>
-      </SafeAreaView>
+          </ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -86,6 +92,9 @@ const styles = StyleSheet.create({
   heading: {
     marginBottom: spacing.xl,
     marginTop: spacing.xxl,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   safeArea: {
     flex: 1,

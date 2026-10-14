@@ -36,6 +36,17 @@ In a second terminal:
 npm run mobile
 ```
 
+If Expo Go says **Cannot connect to Expo CLI**, stop the old Expo process and
+start a tunnel instead. This works when your computer and phone cannot reach
+each other over the same local network:
+
+```powershell
+npm run mobile:tunnel -- --clear
+```
+
+Keep that terminal open, scan its newly generated QR code, and accept the
+network prompt from Windows Firewall if it appears.
+
 If Expo reports that port `8081` is already in use, either stop that earlier Expo process or use a different port:
 
 ```powershell
@@ -60,6 +71,19 @@ EXPO_PUBLIC_API_BASE_URL=http://YOUR_COMPUTER_LAN_IP:3000
 
 For Expo Web on the same computer, use `http://localhost:3000`. For a real phone, use the computer's LAN IPv4 address and ensure the phone and computer are on the same network. A phone's `localhost` is the phone itself, not this computer. This mobile `.env` contains only the API address—never put the database URL, JWT secret, Cloudinary secret, or SMTP credentials in it.
 
+## Device push notifications
+
+While the app is open, notification updates arrive through Socket.IO. For Android/iOS push banners when the app is backgrounded or closed, Expo requires a physical-device development or production build; Expo Go does not support remote push notifications on modern Android Expo SDKs.
+
+When you are ready to test phone push delivery, configure an EAS project from `apps/mobile`, which adds a non-secret EAS project id to `app.json`, then build the app:
+
+```powershell
+npx eas-cli@latest build:configure
+npx eas-cli@latest build --profile development --platform android
+```
+
+Install that build on a physical phone, grant notification permission, and sign in. The app registers its Expo token with the gateway automatically. Configure Firebase Cloud Messaging for Android and Apple Push Notification service credentials for iOS in the Expo/EAS project before production builds. If Expo enhanced push security is enabled, add its access token only as `EXPO_PUSH_ACCESS_TOKEN` in `services/api-gateway/.env`.
+
 ## Cloud database and Prisma
 
 DocConnect uses Prisma Postgres, so local PostgreSQL installation is not required. Put the pooled database URL in `services/database/.env`:
@@ -68,7 +92,7 @@ DocConnect uses Prisma Postgres, so local PostgreSQL installation is not require
 DATABASE_URL="your-pooled-prisma-postgres-url"
 ```
 
-The initial migration has already been applied to the configured development database. For later schema changes use:
+The current development database includes the initial schema plus the chat attachment/read-receipt migration. For later schema changes use:
 
 ```powershell
 npm run database:migrate -- --name describe_change

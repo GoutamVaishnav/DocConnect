@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, type AppRole, roleColors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
+import { useNotifications } from '@/context/notifications';
 
 type Tab = {
   icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -35,6 +36,7 @@ type BottomNavProps = {
 export function BottomNav({ activeLabel = 'Home', role }: BottomNavProps) {
   const theme = roleColors(role);
   const tabs = role === 'patient' ? patientTabs : doctorTabs;
+  const { unreadCount } = useNotifications();
 
   function handleTabPress(label: string) {
     if (role === 'patient' && label === 'Home') {
@@ -100,11 +102,14 @@ export function BottomNav({ activeLabel = 'Home', role }: BottomNavProps) {
             onPress={() => handleTabPress(tab.label)}
             style={styles.tab}
           >
-            <MaterialCommunityIcons
-              color={active ? theme.primary : colors.muted}
-              name={tab.icon}
-              size={22}
-            />
+            <View style={styles.iconWrap}>
+              <MaterialCommunityIcons
+                color={active ? theme.primary : colors.muted}
+                name={tab.icon}
+                size={22}
+              />
+              {tab.label === 'Alerts' && unreadCount > 0 ? <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} /> : null}
+            </View>
             <Text style={[styles.label, { color: active ? theme.primary : colors.muted }]}>
               {tab.label}
             </Text>
@@ -130,9 +135,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 3,
   },
+  iconWrap: {
+    position: 'relative',
+  },
   tab: {
     alignItems: 'center',
     flex: 1,
     minHeight: 43,
+  },
+  unreadDot: {
+    borderColor: colors.surface,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    height: 9,
+    position: 'absolute',
+    right: -4,
+    top: -2,
+    width: 9,
   },
 });

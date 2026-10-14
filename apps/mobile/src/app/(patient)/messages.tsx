@@ -1,5 +1,4 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,6 +6,7 @@ import { AppCard } from '@/components/app-card';
 import { BottomNav } from '@/components/bottom-nav';
 import { ScreenHeader } from '@/components/screen-header';
 import { useConsultationDraft } from '@/context/consultation-draft';
+import { openChat } from '@/lib/chat-navigation';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
@@ -28,7 +28,7 @@ export default function PatientMessagesScreen() {
 
           {activeConsultations.map((consultation) => (
             <AppCard key={consultation.id}>
-              <Pressable accessibilityLabel={`Chat with ${consultation.doctorName ?? 'your doctor'}`} onPress={() => router.push({ pathname: '/chat/[conversationId]', params: { conversationId: consultation.id, role: 'patient' } })} style={styles.messageRow}>
+              <Pressable accessibilityLabel={`Chat with ${consultation.doctorName ?? 'your doctor'}`} onPress={() => openChat(consultation.id, 'patient')} style={styles.messageRow}>
                 <View style={styles.avatar}><MaterialCommunityIcons color={colors.doctor.primary} name="doctor" size={24} /></View>
                 <View style={styles.copy}><Text style={styles.name}>{consultation.doctorName ?? 'Your doctor'}</Text><Text numberOfLines={1} style={styles.preview}>{consultation.title}</Text></View>
                 <MaterialCommunityIcons color={colors.muted} name="chevron-right" size={22} />

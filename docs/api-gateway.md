@@ -19,7 +19,8 @@ The gateway source is intentionally split into simple folders: `routes`, `contro
 | `PATCH` | `/api/v1/profile/doctor/availability` | Enable or disable the current doctor's availability |
 | `POST` | `/api/v1/consultations` | Create a consultation request as a patient |
 | `GET` | `/api/v1/consultations/:consultationId/messages` | Read messages in an active consultation chat |
-| `POST` | `/api/v1/consultations/:consultationId/messages` | Send a message in an active consultation chat |
+| `POST` | `/api/v1/consultations/:consultationId/messages` | Send a text and/or attachment in an active consultation chat |
+| `PATCH` | `/api/v1/consultations/:consultationId/messages/read` | Mark the other participant's delivered messages as seen |
 | `POST` | `/api/v1/consultations/:consultationId/images` | Upload a patient consultation image to Cloudinary |
 | `GET` | `/api/v1/consultations/:consultationId/images/:attachmentId/delivery-url` | Get a short-lived download URL for an authorised consultation image |
 | `DELETE` | `/api/v1/consultations/:consultationId/images/:attachmentId` | Remove a patient image while the consultation is pending |
@@ -30,6 +31,11 @@ The gateway source is intentionally split into simple folders: `routes`, `contro
 | `PATCH` | `/api/v1/consultations/:consultationId/decline` | Hide a pending request from the current doctor's open list |
 | `PATCH` | `/api/v1/consultations/:consultationId/complete` | Complete the assigned consultation with its summary |
 | `PATCH` | `/api/v1/consultations/:consultationId/cancel` | Cancel a pending request as its patient |
+| `GET` | `/api/v1/notifications` | List the authenticated user's notification history |
+| `PATCH` | `/api/v1/notifications/read-all` | Mark all authenticated user's notifications as read |
+| `PATCH` | `/api/v1/notifications/:notificationId/read` | Mark one notification as read |
+| `POST` | `/api/v1/notifications/push-tokens` | Register the current device's Expo push token |
+| `DELETE` | `/api/v1/notifications/push-tokens` | Remove the current device's Expo push token |
 
 ### Request an OTP
 
@@ -164,7 +170,42 @@ Chat is available only while a consultation is `IN_PROGRESS`. Only the patient w
 }
 ```
 
-`body` is required and may contain 1 to 2,000 characters. A new in-app notification record is created for the other participant, without including the message text.
+Send this endpoint as either JSON (for text-only messages) or `multipart/form-data` (when attaching a file). `body` is optional for an attachment-only message and may contain up to 2,000 characters. The multipart field name is `attachment`.
+
+- Images: JPEG, PNG, and WebP.
+- Documents: PDF, DOC, DOCX, and TXT.
+- Maximum size: 10 MB per attachment.
+
+Chat attachment uploads go through the authenticated gateway to Cloudinary. The app receives a short-lived signed delivery URL; it does not receive the Cloudinary API secret or persistent public asset ID. A new in-app notification record is created for the other participant without including the message text.
+
+`PATCH /api/v1/consultations/:consultationId/messages/read` has no body. It marks messages sent by the other participant as read and emits a Socket.IO `chat:read` event to the conversation. The sender can then show **Seen**.
+
+While a user is writing, the app sends the transient Socket.IO event `chat:typing`. This is not stored in the database; it is broadcast only to the other active participant and automatically stops shortly after typing ends.
+
+## Notifications
+
+All notification endpoints require a Bearer access token. The gateway creates a notification for:
+
+- available doctors when a patient submits a consultation;
+- the patient when a doctor accepts or completes a consultation; and
+- the other participant when a chat message is sent.
+
+The notification body deliberately excludes symptom details and message text, so push banners do not expose clinical information on a lock screen.
+
+`GET /api/v1/notifications?limit=30&cursor=NOTIFICATION_ID` returns newest notifications first. `limit` is optional and must be between `1` and `50`.
+
+### Register an Expo device token
+
+`POST /api/v1/notifications/push-tokens`
+
+```json
+{
+  "token": "ExponentPushToken[example-token]",
+  "platform": "ANDROID"
+}
+```
+
+The mobile app calls this automatically after a physical-device EAS build receives notification permission. The server sends through Expo's push service and removes tokens that Expo reports as no longer registered. In-app updates use Socket.IO and work independently of push permissions.
 
 `GET /api/v1/consultations/:consultationId/messages?limit=30&cursor=MESSAGE_ID`
 
@@ -220,6 +261,8 @@ SMTP_SECURE=false
 SMTP_USER="your-smtp-username"
 SMTP_PASSWORD="your-smtp-password-or-app-password"
 SMTP_FROM="DocConnect <no-reply@your-domain.com>"
+# Optional: required only when Expo enhanced push security is enabled.
+EXPO_PUSH_ACCESS_TOKEN=""
 ```
 
 When SMTP mode is enabled, gateway startup calls the provider's SMTP verification step before it begins accepting requests. Use `SMTP_SECURE=true` with an implicit TLS port (normally `465`), or `false` with STARTTLS on port `587`. Do not put any SMTP value in the Expo/mobile app. For real patient health data, ensure your Cloudinary plan/configuration and broader hosting/security design meet the compliance obligations that apply to your deployment.

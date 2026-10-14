@@ -68,6 +68,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let isMounted = true;
 
+    // Restore the session after the native splash. The app route then briefly
+    // shows its splash screen before selecting the right login/home destination.
     void readStoredSession()
       .then((storedSession) => {
         if (isMounted) {

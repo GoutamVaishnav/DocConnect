@@ -10,6 +10,8 @@ import { formatConsultationDate } from '@/context/consultation-draft';
 import { useAuth } from '@/context/auth';
 import { useDoctorRequests } from '@/context/doctor-requests';
 import { consultationApi, getApiErrorMessage } from '@/lib/api';
+import { openChat } from '@/lib/chat-navigation';
+import { goBackOr } from '@/lib/navigation';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
@@ -100,7 +102,7 @@ export default function RequestDetailsScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <View style={styles.topBar}><Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => router.back()} style={styles.backButton}><MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} /></Pressable><Text style={styles.topTitle}>Request Details</Text><View style={styles.backButton} /></View>
+        <View style={styles.topBar}><Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => goBackOr('/open-requests')} style={styles.backButton}><MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} /></Pressable><Text style={styles.topTitle}>Request Details</Text><View style={styles.backButton} /></View>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {screenError ? <View style={styles.errorNote}><MaterialCommunityIcons color="#D93B3B" name="alert-circle-outline" size={20} /><Text style={styles.errorText}>{screenError}</Text></View> : null}
           {request.attachments.length > 0 ? <View style={styles.previewRow}>{request.attachments.map((attachment) => { const uri = attachmentUrls[attachment.id]; return uri ? <Image accessibilityLabel={attachment.originalFileName} key={attachment.id} source={{ uri }} style={styles.previewImage} /> : <View key={attachment.id} style={styles.previewTile}><MaterialCommunityIcons color={colors.doctor.primary} name="image-outline" size={27} /></View>; })}</View> : null}
@@ -109,7 +111,7 @@ export default function RequestDetailsScreen() {
           <AppCard><View style={styles.cardContent}><Text style={styles.cardTitle}>Additional information</Text><Text style={styles.additionalText}>Only the consultation details and photos shared by the patient are available to the assigned doctor.</Text></View></AppCard>
           <View style={styles.secureNote}><MaterialCommunityIcons color={colors.doctor.primary} name="shield-check-outline" size={20} /><Text style={styles.secureNoteText}>Patient data is accessed through your authenticated doctor account.</Text></View>
         </ScrollView>
-        <View style={styles.footer}>{isAccepted ? <AppButton icon="message-text-outline" label="Open Chat" onPress={() => router.push({ pathname: '/chat/[conversationId]', params: { conversationId: request.id, role: 'doctor' } })} role="doctor" /> : isOpen ? <><AppButton disabled={isSaving} label="Decline" onPress={declineConsultation} role="doctor" variant="outline" /><AppButton icon="check-circle-outline" label="Accept Consultation" loading={isSaving} onPress={() => void acceptConsultation()} role="doctor" /></> : <AppButton label="View Case" onPress={() => router.replace({ pathname: '/cases/[caseId]', params: { caseId: request.id } })} role="doctor" />}</View>
+        <View style={styles.footer}>{isAccepted ? <AppButton icon="message-text-outline" label="Open Chat" onPress={() => openChat(request.id, 'doctor')} role="doctor" /> : isOpen ? <><AppButton disabled={isSaving} label="Decline" onPress={declineConsultation} role="doctor" variant="outline" /><AppButton icon="check-circle-outline" label="Accept Consultation" loading={isSaving} onPress={() => void acceptConsultation()} role="doctor" /></> : <AppButton label="View Case" onPress={() => router.replace({ pathname: '/cases/[caseId]', params: { caseId: request.id } })} role="doctor" />}</View>
       </SafeAreaView>
     </View>
   );

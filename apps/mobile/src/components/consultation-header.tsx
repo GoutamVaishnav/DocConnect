@@ -1,8 +1,8 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
+import { goBackOr } from '@/lib/navigation';
 import { spacing } from '@/theme/spacing';
 
 type ConsultationHeaderProps = {
@@ -13,10 +13,12 @@ type ConsultationHeaderProps = {
 const steps = ['Describe problem', 'Add photos', 'Review & submit'];
 
 export function ConsultationHeader({ step, title }: ConsultationHeaderProps) {
+  const fallback = step === 1 ? '/home' : step === 2 ? '/new-consultation' : '/consultation-photos';
+
   return (
     <View>
       <View style={styles.topRow}>
-        <Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => router.back()} style={styles.backButton}>
+        <Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => goBackOr(fallback)} style={styles.backButton}>
           <MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} />
         </Pressable>
         <Text style={styles.title}>{title}</Text>

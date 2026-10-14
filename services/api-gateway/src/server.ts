@@ -46,8 +46,14 @@ async function startServer() {
     : undefined;
 
   if (otpEmailSender) {
-    await otpEmailSender.verifyConfiguration();
-    console.log('SMTP connection verified for OTP email delivery.');
+    // SMTP is needed only when an OTP is requested. Verify it in the
+    // background so a slow or unavailable mail provider never delays chat,
+    // uploads, or the rest of the API gateway.
+    void otpEmailSender.verifyConfiguration()
+      .then(() => console.log('SMTP connection verified for OTP email delivery.'))
+      .catch((error) => {
+        console.warn('SMTP connection could not be verified at startup. OTP email delivery may be unavailable until it reconnects.', error);
+      });
   }
 
   // The wrapper lets Express use the publisher before the Socket.IO server is attached.
@@ -56,6 +62,8 @@ async function startServer() {
   const app = createApp({
     chatEvents: {
       publishMessage: (message) => socketEvents?.publishMessage(message),
+      publishNotification: (notification) => socketEvents?.publishNotification(notification),
+      publishReadReceipt: (receipt) => socketEvents?.publishReadReceipt(receipt),
     },
     otpEmailSender,
   });

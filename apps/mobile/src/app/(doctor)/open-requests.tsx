@@ -8,6 +8,7 @@ import { AppCard } from '@/components/app-card';
 import { BottomNav } from '@/components/bottom-nav';
 import { formatConsultationDate } from '@/context/consultation-draft';
 import { useDoctorRequests, type RequestPriority } from '@/context/doctor-requests';
+import { goBackOr } from '@/lib/navigation';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
@@ -35,7 +36,7 @@ export default function OpenRequestsScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <View style={styles.topBar}><Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => router.back()} style={styles.backButton}><MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} /></Pressable><Text style={styles.topTitle}>Open Requests</Text><View style={styles.backButton} /></View>
+        <View style={styles.topBar}><Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => goBackOr('/dashboard')} style={styles.backButton}><MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} /></Pressable><Text style={styles.topTitle}>Open Requests</Text><View style={styles.backButton} /></View>
         <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl onRefresh={() => void refreshRequests()} refreshing={isLoading} />} showsVerticalScrollIndicator={false}>
           <Text style={typography.screenTitle}>Open Requests</Text>
           <Text style={styles.subtitle}>Review consultation requests available to you.</Text>

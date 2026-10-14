@@ -15,6 +15,7 @@ export const env = {
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME?.trim(),
   corsOrigin: process.env.CORS_ORIGIN?.trim() || 'http://localhost:8081',
   databaseUrl: process.env.DATABASE_URL?.trim(),
+  expoPushAccessToken: process.env.EXPO_PUSH_ACCESS_TOKEN?.trim(),
   jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN?.trim() || '7d',
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET?.trim(),
   otpDeliveryMode,

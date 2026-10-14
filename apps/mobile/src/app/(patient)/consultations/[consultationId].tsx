@@ -10,6 +10,8 @@ import { StatusBadge } from '@/components/status-badge';
 import { useAuth } from '@/context/auth';
 import { formatConsultationDate, useConsultationDraft, type ConsultationRecord } from '@/context/consultation-draft';
 import { consultationApi, getApiErrorMessage } from '@/lib/api';
+import { openChat } from '@/lib/chat-navigation';
+import { goBackOr } from '@/lib/navigation';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
@@ -110,7 +112,7 @@ export default function ConsultationDetailsScreen() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.topBar}>
-          <Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => router.back()} style={styles.backButton}><MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} /></Pressable>
+          <Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => goBackOr('/consultations')} style={styles.backButton}><MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} /></Pressable>
           <Text style={styles.topTitle}>Consultation Details</Text><View style={styles.backButton} />
         </View>
 
@@ -135,7 +137,7 @@ export default function ConsultationDetailsScreen() {
           <AppCard><View style={styles.timelineCard}>{timeline.map((item, index) => <View key={item.title} style={styles.timelineItem}><View style={styles.timelineRail}><View style={[styles.timelineDot, index === timeline.length - 1 && styles.timelineDotActive]} />{index < timeline.length - 1 ? <View style={styles.timelineLine} /> : null}</View><View style={styles.timelineCopy}><Text style={styles.timelineTitle}>{item.title}</Text><Text style={styles.timelineDetail}>{item.detail}</Text></View></View>)}</View></AppCard>
 
           <AppButton disabled={!canChat && !completed} icon={completed ? 'file-document-outline' : 'message-text-outline'} label={completed ? 'View Summary' : canChat ? 'Chat with Doctor' : 'Chat available after acceptance'} onPress={() => {
-            if (canChat) router.push({ pathname: '/chat/[conversationId]', params: { conversationId: consultation.id, role: 'patient' } });
+            if (canChat) openChat(consultation.id, 'patient');
             if (completed) router.push({ pathname: '/consultations/[consultationId]/summary', params: { consultationId: consultation.id } });
           }} variant={canChat || completed ? 'primary' : 'outline'} />
         </ScrollView>

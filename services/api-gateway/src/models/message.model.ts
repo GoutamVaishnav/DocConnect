@@ -1,5 +1,7 @@
 import { getPrismaClient } from '@docconnect/database';
 
+import type { StoredChatAttachment } from './message-attachment.model.js';
+
 type ChatParticipant = {
   id: string;
   role: 'DOCTOR' | 'PATIENT';
@@ -11,18 +13,43 @@ type MessagePageOptions = {
 };
 
 type SendMessageInput = {
+  attachment?: StoredChatAttachment;
   body: string;
   consultationId: string;
   sender: ChatParticipant;
 };
 
 const messageSelect = {
+  attachments: {
+    select: {
+      bytes: true,
+      cloudinaryPublicId: true,
+      createdAt: true,
+      fileFormat: true,
+      id: true,
+      kind: true,
+      mimeType: true,
+      originalFileName: true,
+    },
+  },
   body: true,
   consultationId: true,
   createdAt: true,
   id: true,
+  readAt: true,
   senderId: true,
   senderRole: true,
+} as const;
+
+const notificationSelect = {
+  body: true,
+  consultationId: true,
+  createdAt: true,
+  id: true,
+  readAt: true,
+  title: true,
+  type: true,
+  userId: true,
 } as const;
 
 export class MessageModel {
@@ -70,9 +97,16 @@ export class MessageModel {
       ? 'Your patient sent a new consultation message.'
       : 'Your doctor sent a new consultation message.';
 
-    const [message] = await getPrismaClient().$transaction([
+    const [message, notification] = await getPrismaClient().$transaction([
       getPrismaClient().consultationMessage.create({
         data: {
+          attachments: input.attachment
+            ? {
+              create: {
+                ...input.attachment,
+              },
+            }
+            : undefined,
           body: input.body,
           consultationId: input.consultationId,
           senderId: input.sender.id,
@@ -83,12 +117,29 @@ export class MessageModel {
       getPrismaClient().notification.create({
         data: {
           body: notificationBody,
+          consultationId: input.consultationId,
           title: 'New consultation message',
+          type: 'CHAT_MESSAGE',
           userId: recipientId,
         },
+        select: notificationSelect,
       }),
     ]);
 
-    return message;
+    return { message, notification };
+  }
+
+  async markIncomingMessagesRead(consultationId: string, readerId: string) {
+    const readAt = new Date();
+    const result = await getPrismaClient().consultationMessage.updateMany({
+      where: {
+        consultationId,
+        readAt: null,
+        senderId: { not: readerId },
+      },
+      data: { readAt },
+    });
+
+    return { readAt, updatedCount: result.count };
   }
 }

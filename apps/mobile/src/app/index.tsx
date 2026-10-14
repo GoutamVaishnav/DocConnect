@@ -1,26 +1,44 @@
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/app-button';
 import { BrandMark } from '@/components/brand-mark';
+import { useAuth } from '@/context/auth';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
 export default function SplashScreen() {
+  const { isLoading, session } = useAuth();
+
+  const continueFromSplash = useCallback(() => {
+    if (session?.user.role === 'DOCTOR') {
+      router.replace('/dashboard');
+      return;
+    }
+
+    if (session?.user.role === 'PATIENT') {
+      router.replace('/home');
+      return;
+    }
+
+    router.replace('/patient-login');
+  }, [session?.user.role]);
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
       <SafeAreaView style={styles.safeArea}>
-        <Pressable onPress={() => router.replace('/onboarding')} style={styles.content}>
+        <View style={styles.content}>
           <View style={styles.brandGroup}>
             <BrandMark size={104} />
             <Text style={styles.title}>DocConnect</Text>
             <Text style={styles.tagline}>Your Health, Our Priority</Text>
             <Text style={styles.description}>Connect · Consult · Heal</Text>
           </View>
-        </Pressable>
+        </View>
 
         <View style={styles.footer}>
           <View style={styles.dots}>
@@ -28,7 +46,7 @@ export default function SplashScreen() {
             <View style={styles.dot} />
             <View style={styles.dot} />
           </View>
-          <AppButton label="Get started" onPress={() => router.replace('/onboarding')} />
+          <AppButton disabled={isLoading} label="Next" onPress={continueFromSplash} />
         </View>
       </SafeAreaView>
     </View>

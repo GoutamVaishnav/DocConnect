@@ -8,6 +8,7 @@ import { AppCard } from '@/components/app-card';
 import { BottomNav } from '@/components/bottom-nav';
 import { StatusBadge } from '@/components/status-badge';
 import { formatConsultationDate, useConsultationDraft, type ConsultationStatus } from '@/context/consultation-draft';
+import { goBackOr } from '@/lib/navigation';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/radius';
 import { spacing } from '@/theme/spacing';
@@ -29,7 +30,7 @@ export default function ConsultationsScreen() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.topBar}>
-          <Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => router.back()} style={styles.backButton}>
+          <Pressable accessibilityLabel="Go back" hitSlop={10} onPress={() => goBackOr('/home')} style={styles.backButton}>
             <MaterialCommunityIcons color={colors.navy} name="arrow-left" size={24} />
           </Pressable>
           <Text style={styles.topTitle}>My Consultations</Text>

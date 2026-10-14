@@ -62,7 +62,7 @@ export default function ReviewConsultationScreen() {
             <View style={styles.cardContent}>
               <View style={styles.rowHeader}>
                 <Text style={styles.cardTitle}>Problem Description</Text>
-                <Pressable accessibilityRole="button" onPress={() => router.back()}>
+                <Pressable accessibilityRole="button" onPress={() => router.replace('/new-consultation')}>
                   <Text style={styles.edit}>Edit</Text>
                 </Pressable>
               </View>
@@ -78,7 +78,7 @@ export default function ReviewConsultationScreen() {
             <View style={styles.cardContent}>
               <View style={styles.rowHeader}>
                 <Text style={styles.cardTitle}>Photos</Text>
-                <Pressable accessibilityRole="button" onPress={() => router.back()}>
+                <Pressable accessibilityRole="button" onPress={() => router.replace('/consultation-photos')}>
                   <Text style={styles.edit}>Edit</Text>
                 </Pressable>
               </View>

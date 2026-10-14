@@ -4,31 +4,40 @@ import { createConsultationController } from '../controllers/consultation.contro
 import { createMessageController } from '../controllers/message.controller.js';
 import { createUploadController } from '../controllers/upload.controller.js';
 import { createRequireAuthentication, createRequireRole } from '../middlewares/auth.middleware.js';
-import { consultationImageUpload } from '../middlewares/upload.middleware.js';
+import { consultationImageUpload, messageAttachmentUpload } from '../middlewares/upload.middleware.js';
 import { ConsultationAttachmentModel } from '../models/consultation-attachment.model.js';
 import { ConsultationModel } from '../models/consultation.model.js';
+import { MessageAttachmentModel } from '../models/message-attachment.model.js';
 import { MessageModel } from '../models/message.model.js';
 import { TokenModel } from '../models/token.model.js';
 import type { ChatEventPublisher } from '../realtime/chat-socket.js';
+import { NotificationService } from '../services/notification.service.js';
 
 export function createConsultationRouter(
   jwtAccessSecret: string,
   jwtAccessExpiresIn: string,
   chatEvents?: ChatEventPublisher,
+  notificationService?: NotificationService,
 ) {
   const router = Router();
   const requireAuthentication = createRequireAuthentication(new TokenModel(jwtAccessSecret, jwtAccessExpiresIn));
   const requirePatient = createRequireRole('PATIENT');
   const requireDoctor = createRequireRole('DOCTOR');
-  const consultationController = createConsultationController(new ConsultationModel());
-  const messageController = createMessageController(new MessageModel(), chatEvents);
+  const consultationController = createConsultationController(new ConsultationModel(), notificationService);
+  const messageController = createMessageController(
+    new MessageModel(),
+    new MessageAttachmentModel(),
+    chatEvents,
+    notificationService,
+  );
   const uploadController = createUploadController(new ConsultationAttachmentModel());
 
   router.post('/', requireAuthentication, requirePatient, consultationController.create);
   router.get('/my', requireAuthentication, consultationController.listMine);
   router.get('/open', requireAuthentication, requireDoctor, consultationController.listOpen);
   router.get('/:consultationId/messages', requireAuthentication, messageController.list);
-  router.post('/:consultationId/messages', requireAuthentication, messageController.send);
+  router.post('/:consultationId/messages', requireAuthentication, messageAttachmentUpload, messageController.send);
+  router.patch('/:consultationId/messages/read', requireAuthentication, messageController.markRead);
   router.get('/:consultationId', requireAuthentication, consultationController.getDetails);
   router.post(
     '/:consultationId/images',

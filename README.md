@@ -6,9 +6,9 @@ DocConnect is a local-first telemedicine learning project built with Expo/React 
 
 - npm-workspaces monorepo configured.
 - Expo Router mobile starter created in `apps/mobile`.
-- API Gateway has health, development or SMTP email OTP delivery, JWT access-token, patient/doctor profile, consultation workflow, protected Cloudinary image upload, and active-consultation chat endpoints in `services/api-gateway`.
+- API Gateway has health, development or SMTP email OTP delivery, JWT access-token, patient/doctor profile, consultation workflow, protected Cloudinary image upload, real-time chat, and notification endpoints in `services/api-gateway`.
 - Prisma Postgres is connected for development; user/profile and consultation workflow migrations are in `services/database/prisma/migrations`.
-- Mobile authentication is connected to the API Gateway: email OTP request/verify, encrypted native session storage, role-aware protected routes, registration profile creation, and logout are ready. Other patient/doctor screens still use their local UI state until their respective API integrations are added.
+- Mobile authentication, profiles, consultations, image uploads, chat, and notifications are connected to the API Gateway. Notifications update live while the app is open and register a device for push delivery in an EAS build.
 
 Every backend service follows the same simple `routes → controllers → models → app.ts → server.ts` structure. See [backend architecture](docs/backend-architecture.md).
 

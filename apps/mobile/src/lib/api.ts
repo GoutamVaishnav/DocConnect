@@ -115,12 +115,47 @@ export type ConsultationPhotoUpload = {
 };
 
 export type ApiConsultationMessage = {
+  attachments: ApiChatAttachment[];
   body: string;
   consultationId: string;
   createdAt: string;
   id: string;
+  readAt: string | null;
   senderId: string;
   senderRole: AppUserRole;
+};
+
+export type ApiChatAttachment = {
+  bytes: number;
+  createdAt: string;
+  deliveryUrl: string | null;
+  fileFormat: string;
+  id: string;
+  kind: 'IMAGE' | 'FILE';
+  mimeType: string;
+  originalFileName: string;
+};
+
+export type ChatAttachmentUpload = {
+  fileName: string;
+  mimeType: string;
+  uri: string;
+};
+
+export type ApiNotificationType =
+  | 'CONSULTATION_REQUEST'
+  | 'CONSULTATION_ACCEPTED'
+  | 'CONSULTATION_COMPLETED'
+  | 'CHAT_MESSAGE';
+
+export type ApiNotification = {
+  body: string;
+  consultationId: string | null;
+  createdAt: string;
+  id: string;
+  readAt: string | null;
+  title: string;
+  type: ApiNotificationType;
 };
 
 export class ApiError extends Error {
@@ -281,6 +316,26 @@ async function createImageFormData(photo: ConsultationPhotoUpload) {
   return formData;
 }
 
+async function createChatAttachmentFormData(body: string, attachment: ChatAttachmentUpload) {
+  const formData = new FormData();
+  const fileName = attachment.fileName || 'chat-attachment';
+  formData.append('body', body);
+
+  if (Platform.OS === 'web') {
+    const fileResponse = await fetch(attachment.uri);
+    const fileBlob = await fileResponse.blob();
+    formData.append('attachment', fileBlob, fileName);
+  } else {
+    formData.append('attachment', {
+      name: fileName,
+      type: attachment.mimeType,
+      uri: attachment.uri,
+    } as unknown as Blob);
+  }
+
+  return formData;
+}
+
 export const consultationApi = {
   create(
     accessToken: string,
@@ -354,11 +409,60 @@ export const messageApi = {
     );
   },
 
-  send(accessToken: string, consultationId: string, body: string) {
+  async send(accessToken: string, consultationId: string, body: string, attachment?: ChatAttachmentUpload) {
+    const requestBody = attachment
+      ? await createChatAttachmentFormData(body, attachment)
+      : JSON.stringify({ body });
+
     return request<{ message: ApiConsultationMessage }>(`/api/v1/consultations/${consultationId}/messages`, {
       accessToken,
-      body: JSON.stringify({ body }),
+      body: requestBody,
       method: 'POST',
+    });
+  },
+
+  markRead(accessToken: string, consultationId: string) {
+    return request<{ readAt: string | null; updatedCount: number }>(
+      `/api/v1/consultations/${consultationId}/messages/read`,
+      { accessToken, method: 'PATCH' },
+    );
+  },
+};
+
+export const notificationApi = {
+  list(accessToken: string) {
+    return request<{ nextCursor: string | null; notifications: ApiNotification[] }>('/api/v1/notifications?limit=50', {
+      accessToken,
+    });
+  },
+
+  markAllRead(accessToken: string) {
+    return request<{ updatedCount: number }>('/api/v1/notifications/read-all', {
+      accessToken,
+      method: 'PATCH',
+    });
+  },
+
+  markRead(accessToken: string, notificationId: string) {
+    return request<{ notification: ApiNotification }>(`/api/v1/notifications/${notificationId}/read`, {
+      accessToken,
+      method: 'PATCH',
+    });
+  },
+
+  registerPushToken(accessToken: string, input: { platform: 'ANDROID' | 'IOS'; token: string }) {
+    return request('/api/v1/notifications/push-tokens', {
+      accessToken,
+      body: JSON.stringify(input),
+      method: 'POST',
+    });
+  },
+
+  unregisterPushToken(accessToken: string, token: string) {
+    return request<{ removed: boolean }>('/api/v1/notifications/push-tokens', {
+      accessToken,
+      body: JSON.stringify({ token }),
+      method: 'DELETE',
     });
   },
 };

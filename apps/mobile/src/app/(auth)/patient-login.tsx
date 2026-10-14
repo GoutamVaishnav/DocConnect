@@ -51,6 +51,10 @@ export default function PatientLoginScreen() {
           <Pressable accessibilityRole="link" onPress={() => router.push('/register')}>
             <Text style={styles.accountLink}> Register</Text>
           </Pressable>
+          <Text style={styles.accountText}> · </Text>
+          <Pressable accessibilityRole="link" onPress={() => router.replace('/doctor-login')}>
+            <Text style={styles.accountLink}>Doctor login</Text>
+          </Pressable>
         </View>
       }
       subtitle="Enter your email and we will send a secure one-time code."
@@ -81,7 +85,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   accountPrompt: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
+    justifyContent: 'center',
   },
   accountText: {
     color: colors.text,

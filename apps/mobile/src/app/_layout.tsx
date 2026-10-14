@@ -6,20 +6,23 @@ import { ConsultationDraftProvider } from '@/context/consultation-draft';
 import { DoctorRequestsProvider } from '@/context/doctor-requests';
 import { DoctorProfileProvider } from '@/context/doctor-profile';
 import { PatientProfileProvider } from '@/context/patient-profile';
+import { NotificationsProvider } from '@/context/notifications';
 import { colors } from '@/theme/colors';
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <DoctorProfileProvider>
-        <PatientProfileProvider>
-          <ConsultationDraftProvider>
-            <DoctorRequestsProvider>
-              <RootNavigator />
-            </DoctorRequestsProvider>
-          </ConsultationDraftProvider>
-        </PatientProfileProvider>
-      </DoctorProfileProvider>
+      <NotificationsProvider>
+        <DoctorProfileProvider>
+          <PatientProfileProvider>
+            <ConsultationDraftProvider>
+              <DoctorRequestsProvider>
+                <RootNavigator />
+              </DoctorRequestsProvider>
+            </ConsultationDraftProvider>
+          </PatientProfileProvider>
+        </DoctorProfileProvider>
+      </NotificationsProvider>
     </AuthProvider>
   );
 }
@@ -39,8 +42,8 @@ function RootNavigator() {
 
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+      <Stack.Screen name="index" />
       <Stack.Protected guard={!session}>
-        <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
       <Stack.Protected guard={role === 'PATIENT'}>
@@ -50,7 +53,7 @@ function RootNavigator() {
         <Stack.Screen name="(doctor)" />
       </Stack.Protected>
       <Stack.Protected guard={Boolean(session)}>
-        <Stack.Screen name="chat" />
+        <Stack.Screen name="chat/[conversationId]" />
       </Stack.Protected>
     </Stack>
   );

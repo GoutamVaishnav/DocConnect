@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "mobile": "npm --workspace @docconnect/mobile run start --",
+    "mobile:tunnel": "npm --workspace @docconnect/mobile run start -- --tunnel",
     "gateway": "npm run dev --workspace @docconnect/api-gateway",
     "database:generate": "npm run generate --workspace @docconnect/database",
     "database:migrate": "npm run migrate:dev --workspace @docconnect/database",
