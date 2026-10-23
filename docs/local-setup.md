@@ -69,7 +69,15 @@ Before starting Expo, copy `apps/mobile/.env.example` to `apps/mobile/.env` and 
 EXPO_PUBLIC_API_BASE_URL=http://YOUR_COMPUTER_LAN_IP:3000
 ```
 
-For Expo Web on the same computer, use `http://localhost:3000`. For a real phone, use the computer's LAN IPv4 address and ensure the phone and computer are on the same network. A phone's `localhost` is the phone itself, not this computer. This mobile `.env` contains only the API address—never put the database URL, JWT secret, Cloudinary secret, or SMTP credentials in it.
+`npm run mobile` now starts the API gateway when needed and opens Expo Web. Web automatically uses the local gateway, so it will not fail because a previous LAN IP is still in `.env`.
+
+For a real phone, use:
+
+```powershell
+npm run mobile:phone
+```
+
+This starts the gateway when needed and detects the current LAN IPv4 address automatically. Keep the phone and computer on the same network. A phone's `localhost` is the phone itself, not this computer. This mobile `.env` contains only the API address—never put the database URL, JWT secret, Cloudinary secret, or SMTP credentials in it.
 
 ## Device push notifications
 

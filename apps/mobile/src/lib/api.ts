@@ -170,13 +170,20 @@ export class ApiError extends Error {
 }
 
 // This value is public on purpose: it is only the gateway address, never a key
-// or a secret. For a real phone use the computer's LAN IPv4 address, not localhost.
+// or a secret. The root mobile command supplies the current LAN IP for phones.
 const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim().replace(/\/+$/, '');
 
 function getApiBaseUrl() {
+  // Expo Web runs in the same browser as the development machine. Matching the
+  // browser host means Web always calls the local gateway, even if a previous
+  // phone LAN IP remains in .env.
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname) {
+    return `http://${window.location.hostname}:3000`;
+  }
+
   if (!configuredApiBaseUrl) {
     throw new ApiError(
-      'API address is not configured. Add EXPO_PUBLIC_API_BASE_URL to apps/mobile/.env.',
+      'API address is not configured. Run npm run mobile:phone while connected to Wi-Fi or Ethernet.',
       'API_NOT_CONFIGURED',
     );
   }

@@ -9,8 +9,9 @@
     "packages/*"
   ],
   "scripts": {
-    "mobile": "npm --workspace @docconnect/mobile run start --",
-    "mobile:tunnel": "npm --workspace @docconnect/mobile run start -- --tunnel",
+    "mobile": "node scripts/start-mobile.mjs --web",
+    "mobile:phone": "node scripts/start-mobile.mjs",
+    "mobile:tunnel": "node scripts/start-mobile.mjs --tunnel",
     "gateway": "npm run dev --workspace @docconnect/api-gateway",
     "database:generate": "npm run generate --workspace @docconnect/database",
     "database:migrate": "npm run migrate:dev --workspace @docconnect/database",

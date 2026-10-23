@@ -4,8 +4,9 @@ import { HealthModel } from '../models/health.model.js';
 
 export function createHealthController(healthModel = new HealthModel()): { getHealth: RequestHandler } {
   return {
-    getHealth: (_request, response) => {
-      response.status(200).json(healthModel.getStatus());
+    getHealth: async (_request, response) => {
+      const status = await healthModel.getStatus();
+      response.status(status.status === 'ok' ? 200 : 503).json(status);
     },
   };
 }
